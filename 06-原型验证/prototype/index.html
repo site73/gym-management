@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>健身房运营管理系统 · S1 切片原型（UI + Mock）</title>
+<style>
+  :root{
+    --bg:#f5f7fb; --card:#ffffff; --line:#e3e8f0; --text:#1f2a37; --muted:#6b7684;
+    --primary:#2f5597; --primary-2:#4a7ac7; --ok:#1e8e5a; --warn:#c9761a; --err:#c0392b;
+    --chip:#eef3fb; --radius:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;background:var(--bg);color:var(--text)}
+  header{background:linear-gradient(90deg,var(--primary),var(--primary-2));color:#fff;padding:14px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+  header h1{font-size:16px;margin:0;font-weight:700}
+  header .tag{font-size:12px;background:rgba(255,255,255,.18);padding:3px 10px;border-radius:999px}
+  .switcher{margin-left:auto;display:flex;background:rgba(255,255,255,.16);border-radius:999px;padding:3px}
+  .switcher button{background:transparent;border:0;color:#fff;padding:6px 16px;border-radius:999px;cursor:pointer;font-size:13px}
+  .switcher button.active{background:#fff;color:var(--primary);font-weight:700}
+  main{display:grid;grid-template-columns:1fr 360px;gap:18px;padding:18px;max-width:1180px;margin:0 auto}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:16px}
+  .panel h2{font-size:14px;margin:0 0 12px;color:var(--primary)}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .card{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;background:#fff}
+  .card .t{font-weight:700;font-size:14px}
+  .card .m{color:var(--muted);font-size:12px;margin-top:4px}
+  button.btn{background:var(--primary);color:#fff;border:0;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px}
+  button.btn.ghost{background:var(--chip);color:var(--primary)}
+  button.btn.warn{background:var(--warn)}
+  button.btn:disabled{opacity:.45;cursor:not-allowed}
+  .chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--primary);margin-right:6px}
+  .chip.ok{background:#e6f6ee;color:var(--ok)} .chip.warn{background:#fdf1e3;color:var(--warn)} .chip.err{background:#fdecea;color:var(--err)}
+  .phone{width:320px;border:10px solid #1f2a37;border-radius:28px;background:#fff;margin:0 auto;overflow:hidden}
+  .phone .top{background:#1f2a37;color:#fff;font-size:12px;text-align:center;padding:6px}
+  .phone .body{height:520px;overflow:auto;padding:12px;background:#fafbfe}
+  .phone .tabs{display:flex;border-top:1px solid var(--line);background:#fff}
+  .phone .tabs div{flex:1;text-align:center;padding:9px 0;font-size:12px;color:var(--muted);cursor:pointer}
+  .phone .tabs div.active{color:var(--primary);font-weight:700}
+  .log{font-family:Consolas,monospace;font-size:12px;line-height:1.7;max-height:430px;overflow:auto;background:#0f172a;color:#cfe3ff;border-radius:10px;padding:12px}
+  .log .r{color:#7ee2b8}.log .e{color:#ff9b8a}.log .w{color:#ffd479}.log .i{color:#9dc4ff}
+  .hidden{display:none}
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;background:#1f2a37;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;opacity:0;transition:.25s;pointer-events:none;z-index:99}
+  .toast.show{opacity:1}
+  .mock{font-size:11px;color:var(--muted);margin-top:6px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left}
+  th{color:var(--muted);font-weight:600}
+</style>
+</head>
+<body>
+<header>
+  <h1>健身房运营管理系统 · 原型（切片 S1 + 预警）</h1>
+  <span class="tag">UI 原型 + Mock 数据 + 规则执行</span>
+  <div class="switcher">
+    <button id="swMember" class="active" onclick="switchView('member')">会员端（小程序）</button>
+    <button id="swAdmin" onclick="switchView('admin')">门店后台（Web）</button>
+  </div>
+</header>
+
+<main>
+  <!-- ============ 会员端 ============ -->
+  <section id="viewMember" class="panel">
+    <h2>会员端 · 微信小程序（Mock）</h2>
+    <div class="row" style="margin-bottom:12px">
+      <span style="font-size:13px">当前登录会员：</span>
+      <button class="btn ghost" id="switchMemberBtn" onclick="toggleMember()">切换会员</button>
+      <span id="memberBadge" class="chip ok">张三 · 会籍有效</span>
+      <span class="mock" id="strikeInfo">已累计爽约 2 次</span>
+    </div>
+    <div class="phone">
+      <div class="top">健身 GO · 会员端</div>
+      <div class="body" id="phoneBody"></div>
+      <div class="tabs">
+        <div id="tab-1" class="active" onclick="go('home')">今日课程</div>
+        <div id="tab-2" onclick="go('mine')">我的预约</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 门店后台 ============ -->
+  <section id="viewAdmin" class="panel hidden">
+    <h2>门店后台 · Web 管理端（Mock）</h2>
+    <div class="row" style="margin-bottom:10px">
+      <button class="btn" onclick="runDailyScore()">执行每日流失风险评分</button>
+      <button class="btn ghost" onclick="runMonthly()">执行月末提成结算</button>
+    </div>
+    <div class="card">
+      <div class="t">排课与冲突检测</div>
+      <div class="m">提交冲突然时段可验证 SYS-R3</div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" onclick="trySchedule()">提交排课：陈教练 19:00</button>
+        <span class="mock">当前 19:00 陈教练已有课程 → 预期被拒绝</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="t">会员风险清单（S4 预警）</div>
+      <div id="riskList" class="m">尚未执行评分</div>
+    </div>
+    <div class="card">
+      <div class="t">工单</div>
+      <div id="ticketList" class="m">暂无工单（会员端可提交投诉模拟）</div>
+    </div>
+  </section>
+
+  <!-- ============ 验证日志 ============ -->
+  <aside class="panel">
+    <h2>规则执行 / 验证日志</h2>
+    <div class="log" id="log"></div>
+    <div class="row" style="margin-top:10px">
+      <button class="btn ghost" onclick="resetAll()">重置数据</button>
+      <span class="mock">日志中的 SYS-Rx / REQ-Bx 即命中的规则与需求编号</span>
+    </div>
+  </aside>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ========================= 内置 Mock 数据（Mock 层，替代真实后端/外部依赖） ========================= */
+const DB = {
+  members: {
+    zhang: { id:'M001', name:'张三', status:'有效', strikes:2 },
+    li:    { id:'M002', name:'李四', status:'过期', strikes:0 },
+    wang:  { id:'M003', name:'王五', status:'有效', strikes:0, lastVisitDays:35 }
+  },
+  current: 'zhang',
+  courses: [
+    { id:'C1', name:'动感单车', time:'19:00', coach:'陈教练', cap:20, booked:18 },
+    { id:'C2', name:'瑜伽',     time:'18:00', coach:'林教练', cap:15, booked:15 },
+    { id:'C3', name:'搏击操',   time:'20:00', coach:'陈教练', cap:12, booked:5 }
+  ],
+  bookings: [],
+  tickets: [],
+  scores: []
+};
+
+/* ========================= 工具 ========================= */
+function log(msg, type='i'){
+  const box = document.getElementById('log');
+  const time = new Date().toLocaleTimeString('zh-CN',{hour12:false});
+  box.innerHTML += `<div class="${type}">[${time}] ${msg}</div>`;
+  box.scrollTop = box.scrollHeight;
+}
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1600);
+}
+function me(){ return DB.members[DB.current]; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+/* ========================= 视图切换 ========================= */
+function switchView(v){
+  document.getElementById('viewMember').classList.toggle('hidden', v!=='member');
+  document.getElementById('viewAdmin').classList.toggle('hidden', v!=='admin');
+  document.getElementById('swMember').classList.toggle('active', v==='member');
+  document.getElementById('swAdmin').classList.toggle('active', v==='admin');
+  if(v==='admin') renderAdmin();
+}
+
+/* ========================= 会员端渲染 ========================= */
+let screen = 'home';
+function go(s){ screen = s; render(); }
+function render(){
+  const m = me();
+  document.getElementById('memberBadge').textContent = `${m.name} · 会籍${m.status}`;
+  document.getElementById('memberBadge').className = 'chip ' + (m.status==='有效'?'ok':'err');
+  document.getElementById('strikeInfo').textContent = `已累计爽约 ${m.strikes} 次`;
+  document.getElementById('tab-1').classList.toggle('active', screen==='home');
+  document.getElementById('tab-2').classList.toggle('active', screen==='mine');
+  const body = document.getElementById('phoneBody');
+  if(screen==='home'){
+    body.innerHTML = `<div style="font-size:13px;color:#6b7684;margin-bottom:8px">今日可约课程</div>` +
+      DB.courses.map(c=>{
+        const left = c.cap - c.booked;
+        const disabled = left<=0 || m.status!=='有效';
+        return `<div class="card">
+          <div class="t">${esc(c.name)} · ${esc(c.time)}</div>
+          <div class="m">教练：${esc(c.coach)} ｜ 剩余名额：${left}/${c.cap} ${left<=0?'<span class="chip err">已满</span>':''}</div>
+          <button class="btn" style="margin-top:8px" ${disabled?'disabled':''} onclick="book('${c.id}')">立即约课</button>
+          ${disabled?'<span class="mock">'+(m.status!=='有效'?'会籍不可用':'已满，可候补')+'</span>':''}
+        </div>`;
+      }).join('');
+  }else{
+    const mine = DB.bookings.filter(b=>b.member===m.id);
+    body.innerHTML = mine.length===0
+      ? `<div class="mock">暂无预约，去“今日课程”约一节课吧。</div>`
+      : mine.map(b=>{
+          const c = DB.courses.find(x=>x.id===b.course);
+          const canCheckin = b.status==='已约';
+          return `<div class="card">
+            <div class="t">${esc(c.name)} · ${esc(c.time)}</div>
+            <div class="m">状态：<span class="chip ${b.status==='已签到'?'ok':(b.status==='爽约'?'err':'')}">${b.status}</span></div>
+            <div class="row" style="margin-top:8px">
+              <button class="btn" ${canCheckin?'':'disabled'} onclick="checkin('${b.id}')">扫码签到</button>
+              <button class="btn ghost" ${canCheckin?'':'disabled'} onclick="cancelBooking('${b.id}')">取消</button>
+              <button class="btn warn" ${canCheckin?'':'disabled'} onclick="simulateTimeout('${b.id}')">模拟超时未签到</button>
+            </div>
+          </div>`;
+        }).join('');
+  }
+}
+
+/* ========================= 业务动作（体现需求/规则执行） ========================= */
+function book(courseId){
+  const m = me(), c = DB.courses.find(x=>x.id===courseId);
+  // SYS-R1 会籍有效
+  if(m.status!=='有效'){ log(`REQ-B4-001 命中 SYS-R1：会籍${m.status}，拒绝预约`, 'e'); toast('会籍已过期，请先续费'); return; }
+  // SYS-R4 爽约惩罚
+  if(m.strikes>=3){ log(`REQ-B4-004 命中 SYS-R4：累计爽约 ${m.strikes} 次，7 天内限制预约`, 'e'); toast('已被限制预约 7 天'); return; }
+  // SYS-R3 时间冲突
+  const conflict = DB.bookings.some(b=>b.member===m.id && b.status==='已约' &&
+      DB.courses.find(x=>x.id===b.course).time===c.time);
+  if(conflict){ log(`REQ-B4-001 命中 SYS-R3：同会员同时段已有预约，拒绝`, 'e'); toast('该时段已有预约，时间冲突'); return; }
+  // SYS-R3 容量
+  if(c.cap - c.booked <= 0){ log(`REQ-B4-001 命中 SYS-R3：课程已满，拒绝并可候补`, 'w'); toast('课程已满，可加入候补'); return; }
+  DB.bookings.push({ id:'B'+Date.now().toString().slice(-6), member:m.id, course:c.id, status:'已约' });
+  c.booked++;
+  log(`✅ REQ-B4-001 通过：${m.name} 预约《${c.name}》成功，状态=已约`, 'r');
+  toast('预约成功'); render();
+}
+function checkin(bid){
+  const b = DB.bookings.find(x=>x.id===bid); if(!b) return;
+  b.status='已签到';
+  log(`✅ REQ-B4-002 通过：扫码签到成功，状态=已签到`, 'r'); toast('签到成功'); render();
+}
+function cancelBooking(bid){
+  const b = DB.bookings.find(x=>x.id===bid); const c = DB.courses.find(x=>x.id===b.course);
+  b.status='取消'; c.booked = Math.max(0, c.booked-1);
+  log(`SYS-R3：取消预约，释放名额，${c.name} 剩余 ${c.cap-c.booked}`, 'i'); toast('已取消'); render();
+}
+function simulateTimeout(bid){
+  const b = DB.bookings.find(x=>x.id===bid); const m = me();
+  b.status='爽约'; m.strikes++;
+  log(`REQ-B4-003 命中：超时未签到 → 判定爽约，累计 ${m.strikes} 次`, 'w');
+  if(m.strikes>=3) log(`⚠️ REQ-B4-004 命中 SYS-R4：累计爽约 3 次 → 限制预约 7 天`, 'e');
+  toast('已判定爽约'); render();
+}
+function toggleMember(){
+  DB.current = DB.current==='zhang' ? 'li' : 'zhang';
+  log(`切换登录会员 → ${me().name}（会籍${me().status}）`, 'i'); render();
+}
+
+/* ========================= 门店后台动作 ========================= */
+function trySchedule(){
+  // 19:00 陈教练已有课程
+  const exists = DB.courses.some(c=>c.time==='19:00' && c.coach==='陈教练');
+  if(exists){ log(`REQ-B3-001 命中 SYS-R3：陈教练 19:00 冲突，排课被拒绝`, 'e'); toast('排课冲突，已拒绝'); return; }
+  log('排课成功', 'r');
+}
+function runDailyScore(){
+  const list = [];
+  Object.values(DB.members).forEach(m=>{
+    if((m.lastVisitDays||0) >= 28){ list.push(`${m.name}：连续 4 周未到店 → 高风险`); }
+  });
+  // 爽约率规则示例
+  list.push('李四：近 30 天爽约率 40% → 高风险');
+  DB.scores = list;
+  log(`REQ-B8-002 命中 SYS-R7：生成风险清单 ${list.length} 条，并生成跟进任务`, 'w');
+  renderAdmin(); toast('评分完成');
+}
+function runMonthly(){
+  log(`REQ-B5-005 命中 SYS-R10：月末结算 → 生成陈教练提成报表（课消 40 次 × 20%）`, 'r');
+  toast('提成报表已生成');
+}
+function renderAdmin(){
+  const rl = document.getElementById('riskList');
+  rl.innerHTML = DB.scores.length===0 ? '尚未执行评分' :
+    DB.scores.map(s=>`<div>⚠️ ${esc(s)} <span class="chip warn">待跟进</span></div>`).join('');
+  const tl = document.getElementById('ticketList');
+  tl.innerHTML = DB.tickets.length===0 ? '暂无工单' :
+    DB.tickets.map(t=>`<div>🎫 ${esc(t.name)}：${esc(t.desc)} <span class="chip">${t.status}</span></div>`).join('');
+}
+
+/* ========================= 初始化 ========================= */
+function resetAll(){
+  DB.current='zhang';
+  DB.courses = [
+    { id:'C1', name:'动感单车', time:'19:00', coach:'陈教练', cap:20, booked:18 },
+    { id:'C2', name:'瑜伽',     time:'18:00', coach:'林教练', cap:15, booked:15 },
+    { id:'C3', name:'搏击操',   time:'20:00', coach:'陈教练', cap:12, booked:5 }
+  ];
+  DB.bookings=[]; DB.tickets=[]; DB.scores=[];
+  DB.members.zhang.strikes=2; DB.members.li.strikes=0;
+  document.getElementById('log').innerHTML='';
+  log('原型已重置（Mock 数据）','i'); render(); renderAdmin();
+}
+log('原型启动：Mock 数据已加载（会员3 / 课程3）','i');
+log('建议验证顺序：约课成功 → 切换为李四（会籍过期）验证拒绝 → 张三模拟超时累计爽约 → 达 3 次验证限制 → 后台执行评分/结算','i');
+render(); renderAdmin();
+</script>
+</body>
+</html>

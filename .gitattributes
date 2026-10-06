@@ -1,0 +1,11 @@
+# 统一文本文件行尾为 LF
+* text=auto eol=lf
+
+# 二进制文件（避免被当作文本处理）
+*.docx binary
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+
+# Gherkin 特性文件按文本处理
+*.feature text
