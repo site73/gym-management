@@ -20,4 +20,7 @@ public interface CourseFacade {
 
     /** 排课冲突检测（SYS-R3） */
     boolean willConflict(Long coachId, String room, java.time.LocalDateTime start, java.time.LocalDateTime end);
+
+    /** 课程列表（含剩余名额），供小程序端与后台展示 */
+    java.util.List<CourseView> listCourses();
 }

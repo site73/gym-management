@@ -12,6 +12,10 @@ public interface BookingRepository extends JpaRepository<BookingEntity, Long> {
 
     Optional<BookingEntity> findByMemberIdAndCourseId(Long memberId, Long courseId);
 
+    /** 幂等判重：只针对"有效"状态的预约（取消后可再约同一课程） */
+    Optional<BookingEntity> findFirstByMemberIdAndCourseIdAndStatusIn(
+            Long memberId, Long courseId, java.util.Collection<String> statuses);
+
     long countByMemberIdAndStatusAndBookedAtAfter(Long memberId, String status, java.time.LocalDateTime after);
 
     long countByMemberIdAndBookedAtAfter(Long memberId, java.time.LocalDateTime after);

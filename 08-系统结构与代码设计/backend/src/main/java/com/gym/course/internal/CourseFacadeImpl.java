@@ -47,4 +47,14 @@ public class CourseFacadeImpl implements CourseFacade {
     public boolean willConflict(Long coachId, String room, LocalDateTime start, LocalDateTime end) {
         return courseRepository.countConflict(coachId, room, start, end) > 0;
     }
+
+    @Override
+    public java.util.List<com.gym.course.api.CourseView> listCourses() {
+        return courseRepository.findAll().stream()
+                .map(c -> new com.gym.course.api.CourseView(
+                        c.getId(), c.getCode(), c.getName(), c.getCoachId(), c.getRoom(),
+                        c.getStartTime(), c.getEndTime(), c.getCapacity(), c.getBookedCount(),
+                        Math.max(0, c.getCapacity() - c.getBookedCount()), c.getStatus()))
+                .toList();
+    }
 }

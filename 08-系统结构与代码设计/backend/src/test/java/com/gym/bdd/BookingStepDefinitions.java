@@ -4,68 +4,19 @@ import io.cucumber.java.en.Given;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
 
-import java.util.*;
-
+import static com.gym.bdd.S1World.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * booking.feature 的步骤绑定（S1 切片 · 约课规则 SYS-R1/R2/R3）。
+ * booking.feature 的步骤绑定（S1 · 约课规则 SYS-R1/R2/R3）。
  *
  * <p>步骤注解统一以 <code>^...$</code> 锚定，交由 Cucumber 按**正则**解析
- * （若不加锚点会被当作 Cucumber 表达式，无法识别 \d 等正则语法）。
- *
- * <p>本类用内存模型承载场景状态，聚焦"业务规则是否可执行"；
- * 其余 S1 场景（attendance / membership）与后续切片由 09 阶段的 Node 参考执行器全量执行，
- * 见 {@code 09-代码实现与迭代/verify/report.md}。
+ * （不加锚点会被当作 Cucumber 表达式，无法识别 \d 等正则语法）。
  */
 public class BookingStepDefinitions {
 
-    /* ---------- 内存模型（与 Java 规则实现同语义） ---------- */
-    static class Member {
-        String name; String status = "active"; int noShow = 0;
-        Member(String n) { this.name = n; }
-    }
-    static class Course {
-        String name; String time; String coach = "待定"; int capacity = 20; int booked = 0;
-        Course(String n) {
-            this.name = n;
-            var m = java.util.regex.Pattern.compile("\\d{1,2}:\\d{2}").matcher(n);
-            this.time = m.find() ? m.group() : "00:00";
-        }
-        int remaining() { return capacity - booked; }
-    }
-    static class Result { boolean ok; String reason; boolean waitlist; boolean idempotent; }
-
-    private final Map<String, Member> members = new HashMap<>();
-    private final Map<String, Course> courses = new HashMap<>();
-    private final List<String[]> bookings = new ArrayList<>(); // [member, course, status]
-    private String curMember, curCourse, curCoach;
-    private Result last;
-    private boolean scheduleRejected;
-    private String scheduleReason;
-    private int remainingBefore;
-
     private static String toStatus(String cn) {
         return switch (cn) { case "有效" -> "active"; case "过期" -> "expired"; case "冻结" -> "frozen"; default -> cn; };
-    }
-    private Member member(String n) { return members.computeIfAbsent(n, Member::new); }
-    private Course course(String n) { return courses.computeIfAbsent(n, Course::new); }
-
-    private Result book(String memberName, String courseName) {
-        var m = member(memberName); var c = course(courseName);
-        var r = new Result();
-        if (!"active".equals(m.status)) {
-            r.reason = "frozen".equals(m.status) ? "会籍冻结中，暂不可约课" : "会籍已过期，请先续费";
-            return r;
-        }
-        boolean exist = bookings.stream().anyMatch(b -> b[0].equals(memberName) && b[1].equals(courseName) && !b[2].equals("取消"));
-        if (exist) { r.ok = true; r.idempotent = true; return r; }
-        boolean conflict = bookings.stream().anyMatch(b -> b[0].equals(memberName)
-                && !b[2].equals("取消") && course(b[1]).time.equals(c.time));
-        if (conflict) { r.reason = "该时段已有预约，存在时间冲突"; return r; }
-        if (c.remaining() <= 0) { r.reason = "课程已满"; r.waitlist = true; return r; }
-        c.booked++; bookings.add(new String[]{memberName, courseName, "已约"});
-        r.ok = true; return r;
     }
 
     /* ---------- Given ---------- */
@@ -74,32 +25,37 @@ public class BookingStepDefinitions {
 
     @Given("^课程\"(.*?)\"剩余名额大于 (\\d+)$")
     public void courseRemainingMoreThan(String name, int n) {
-        curCourse = name; var c = course(name); c.capacity = c.booked + n + 1;
+        curCourse = name; Course c = course(name); c.capacity = c.booked + n + 1;
     }
 
+    /** 同时覆盖"剩余名额为 N"与"的剩余名额为 N"两种写法 */
     @Given("^课程\"(.*?)\"的?剩余名额为 (\\d+)$")
     public void courseRemainingExactly(String name, int n) {
-        curCourse = name; var c = course(name); c.capacity = c.booked + n;
+        curCourse = name; Course c = course(name); c.capacity = c.booked + n;
     }
 
     @Given("^会员\"(.*?)\"已存在 (\\d{1,2}:\\d{2}) 的预约$")
     public void memberHasBookingAt(String name, String time) {
         curMember = name;
-        var holder = course("占位课 " + time); holder.time = time;
-        bookings.add(new String[]{name, holder.name, "已约"});
+        Course holder = course("占位课 " + time);
+        holder.time = time; holder.capacity = 10; holder.booked = 1;
+        Booking b = new Booking();
+        b.member = name; b.course = holder.name; b.status = "已约";
+        bookings.add(b);
     }
 
     @Given("^会员\"(.*?)\"已成功预约课程\"(.*?)\"$")
     public void memberBookedSuccessfully(String name, String courseName) {
         curMember = name; curCourse = courseName;
-        var r = book(name, courseName);
-        assertThat(r.ok).as("前置条件：应能成功预约").isTrue();
+        assertThat(book(name, courseName).ok).as("前置条件：应能成功预约").isTrue();
         remainingBefore = course(courseName).remaining();
     }
 
     @Given("^教练\"(.*?)\"在 (\\d{1,2}:\\d{2}) 已有课程$")
     public void coachHasCourse(String coach, String time) {
-        curCoach = coach; var c = course("已有课 " + time); c.coach = coach; c.time = time;
+        curCoach = coach;
+        Course c = course("已有课 " + time);
+        c.coach = coach; c.time = time;
     }
 
     /* ---------- When ---------- */
@@ -117,7 +73,8 @@ public class BookingStepDefinitions {
 
     @When("^该会员再提交 (\\d{1,2}:\\d{2}) 另一课程的预约$")
     public void submitAnotherAt(String time) {
-        var n = "另一课 " + time; var c = course(n); c.time = time; c.capacity = 10;
+        String n = "另一课 " + time;
+        Course c = course(n); c.time = time; c.capacity = 10;
         last = book(curMember, n);
     }
 
@@ -125,10 +82,7 @@ public class BookingStepDefinitions {
     public void submitAgain() { last = book(curMember, curCourse); }
 
     @When("^店长提交该教练 (\\d{1,2}:\\d{2}) 的新排课$")
-    public void schedule(String time) {
-        scheduleRejected = courses.values().stream().anyMatch(c -> c.coach.equals(curCoach) && c.time.equals(time));
-        scheduleReason = scheduleRejected ? "教练 " + curCoach + " 在 " + time + " 已有课程" : null;
-    }
+    public void schedule(String time) { S1World.schedule(curCoach, time); }
 
     /* ---------- Then ---------- */
     @Then("^系统应生成预约$")
@@ -139,9 +93,9 @@ public class BookingStepDefinitions {
 
     @Then("^该预约状态应为\"(.*?)\"$")
     public void expectStatus(String status) {
-        var b = bookings.stream().filter(x -> x[0].equals(curMember) && x[1].equals(curCourse)).reduce((a, c) -> c);
-        assertThat(b).isPresent();
-        assertThat(b.get()[2]).isEqualTo(status);
+        Booking b = lastBookingOf(curMember);
+        assertThat(b).isNotNull();
+        assertThat(b.status).isEqualTo(status);
     }
 
     @Then("^返回提示\"(.*?)\"$")

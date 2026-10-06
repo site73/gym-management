@@ -35,6 +35,12 @@ public class RuleConfigEntity {
 
     protected RuleConfigEntity() {}
 
+    public RuleConfigEntity(String ruleCode, String ruleName, String paramsJson) {
+        this.ruleCode = ruleCode;
+        this.ruleName = ruleName;
+        this.paramsJson = paramsJson;
+    }
+
     /**
      * 将 params_json 解析为 Map。
      * 简化实现：形如 {"N":3,"restrictDays":7} 的键值对解析（避免额外 JSON 依赖）。

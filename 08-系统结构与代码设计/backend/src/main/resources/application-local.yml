@@ -1,0 +1,50 @@
+# 本地运行配置（H2 内存库）——无需安装 MySQL 即可启动后端
+# 启动：mvn spring-boot:run -Dspring-boot.run.profiles=local
+#  或   java -jar target/gym-backend-1.0.0.jar --spring.profiles.active=local
+spring:
+  datasource:
+    url: jdbc:h2:mem:gym;DB_CLOSE_DELAY=-1;MODE=MySQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop     # 由实体自动建表（生产以迁移脚本为准，见 07）
+    database-platform: org.hibernate.dialect.H2Dialect
+    open-in-view: false
+    defer-datasource-initialization: true   # 先建表、后灌种子数据
+
+  sql:
+    init:
+      mode: always
+      encoding: UTF-8            # 关键：否则 Windows 默认 GBK 读取 UTF-8 脚本会导致中文乱码
+      data-locations: classpath:data-local.sql
+
+  flyway:
+    enabled: false              # 迁移脚本为 MySQL 语法，本地改用 Hibernate 自动建表 + data-local.sql
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# 本地不调用微信真实接口
+wechat:
+  appid: local-mock
+  secret: local-mock
+  pay:
+    mchid: local-mock
+    key: local-mock
+    notify-url: http://127.0.0.1:8080/api/pay/notify
+
+# 本地未启动 Redis，关闭其健康检查以免整体状态为 DOWN
+management:
+  health:
+    redis:
+      enabled: false
+
+logging:
+  level:
+    root: INFO
+    com.gym: DEBUG

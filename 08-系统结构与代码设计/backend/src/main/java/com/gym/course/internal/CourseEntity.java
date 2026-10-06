@@ -43,10 +43,31 @@ public class CourseEntity {
     @Column(nullable = false, length = 16)
     private String status = "published";
 
+    public CourseEntity() {}
+
+    public CourseEntity(Long id, String code, String name, Long coachId, String room,
+                        LocalDateTime startTime, LocalDateTime endTime, int capacity) {
+        this.id = id;
+        this.code = code;
+        this.name = name;
+        this.type = "group";
+        this.coachId = coachId;
+        this.room = room;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.capacity = capacity;
+        this.bookedCount = 0;
+        this.status = "published";
+    }
+
     public Long getId() { return id; }
+    public String getCode() { return code; }
+    public String getName() { return name; }
+    public String getStatus() { return status; }
     public Integer getCapacity() { return capacity; }
     public Integer getBookedCount() { return bookedCount; }
     public LocalDateTime getStartTime() { return startTime; }
+    public LocalDateTime getEndTime() { return endTime; }
     public Long getCoachId() { return coachId; }
     public String getRoom() { return room; }
 }

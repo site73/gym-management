@@ -4,11 +4,16 @@ import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-/** 预约实体（对应表 booking，见 07 的 V1 迁移脚本）。 */
+/**
+ * 预约实体（对应表 booking，见 07 的 V1 迁移脚本 + V6 调整）。
+ *
+ * <p>注意：唯一约束 (member_id, course_id) 已于 V6 移除——
+ * 因为"取消后可再次预约同一课程"是合法业务行为，幂等性改由应用层保证
+ * （只对 booked / checked_in / no_show 状态判重）。
+ */
 @Entity
 @Table(name = "booking",
-       uniqueConstraints = @UniqueConstraint(name = "uk_booking_member_course",
-                                             columnNames = {"member_id", "course_id"}))
+       indexes = @Index(name = "idx_booking_member_course", columnList = "member_id, course_id"))
 public class BookingEntity {
 
     @Id

@@ -31,7 +31,20 @@ public class MemberEntity {
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    protected MemberEntity() {}
+
+    public MemberEntity(Long id, String memberNo, String name, String phone, String status) {
+        this.id = id;
+        this.memberNo = memberNo;
+        this.name = name;
+        this.phone = phone;
+        this.status = status;
+    }
+
+    /** 仅用于本地种子数据显式指定主键 */
+    public void setId(Long id) { this.id = id; }
     public Long getId() { return id; }
+    public String getName() { return name; }
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
     public String getRiskLevel() { return riskLevel; }

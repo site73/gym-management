@@ -49,8 +49,9 @@ public class BookingAppService implements BookingFacade {
     /** 约课（REQ-B4-001） */
     @Transactional
     public BookingResult book(Long memberId, Long courseId) {
-        // 幂等：同一会员同一课程不重复生成
-        var exist = bookingRepository.findByMemberIdAndCourseId(memberId, courseId);
+        // 幂等：同一会员同一课程（且处于有效状态）不重复生成；已取消的允许重新预约
+        var exist = bookingRepository.findFirstByMemberIdAndCourseIdAndStatusIn(
+                memberId, courseId, java.util.List.of("booked", "checked_in", "no_show"));
         if (exist.isPresent()) {
             return BookingResult.ok(exist.get().getId());
         }
