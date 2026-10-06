@@ -13,6 +13,7 @@
   .sw button{background:transparent;border:0;color:#fff;padding:6px 16px;border-radius:999px;cursor:pointer;font-size:13px}
   .sw button.active{background:#fff;color:var(--primary);font-weight:700}
   main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;padding:16px;max-width:1240px;margin:0 auto;align-items:start}
+  main.single{grid-template-columns:minmax(0,1fr)}   /* 会员端不展示日志栏 */
   .views{display:flex;flex-direction:column;gap:16px;min-width:0}
   .side{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
@@ -41,7 +42,7 @@
   </div>
 </header>
 
-<main>
+<main id="mainGrid" class="single">
   <div class="views">
   <section id="viewMember" class="panel">
     <h2>会员端（模拟小程序）</h2>
@@ -77,7 +78,7 @@
   </section>
   </div>
 
-  <aside class="panel side">
+  <aside class="panel side hidden" id="logPanel">
     <h2>接口调用日志（真实请求）<span class="chip" id="logCount" style="margin-left:6px">0 条</span></h2>
     <div style="margin-bottom:8px">
       <button class="btn ghost" onclick="document.getElementById('log').textContent='';logCount()">清空日志</button>
@@ -159,7 +160,10 @@ function switchView(v) {
   $('viewMember').classList.toggle('hidden', v !== 'member');
   $('viewAdmin').classList.toggle('hidden', v !== 'admin');
   $('swM').classList.toggle('active', v === 'member'); $('swA').classList.toggle('active', v === 'admin');
-  if (v === 'admin') { loadSummary(); loadRisks(); }
+  // 接口调用日志仅在门店后台可见，会员端不展示
+  $('logPanel').classList.toggle('hidden', v !== 'admin');
+  $('mainGrid').classList.toggle('single', v !== 'admin');
+  if (v === 'admin') { loadSummary(); loadRisks(); logCount(); }
 }
 async function runRisk() { const r = await api('POST', '/api/jobs/risk-score', {}); alert(`生成 ${r.data.length} 条跟进/预警任务`); loadRisks(); }
 async function loadRisks() {

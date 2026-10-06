@@ -66,3 +66,29 @@ INSERT INTO dict_item (dict_type, item_code, item_name, sort_no) VALUES
   ('equipment_category','strength','力量器械',2),
   ('equipment_category','other','其他',3)
 ON DUPLICATE KEY UPDATE item_name = VALUES(item_name);
+
+-- 5) 演示用会员（大作业演示数据；手机号已脱敏存储）
+INSERT INTO member (id, member_no, name, phone, status, risk_level) VALUES
+  (1, 'M001', '张三', '138****0001', 'active',  NULL),
+  (2, 'M002', '李四', '139****0002', 'expired', NULL),
+  (3, 'M003', '王五', '137****0003', 'active',  NULL)
+ON DUPLICATE KEY UPDATE name = VALUES(name), status = VALUES(status);
+
+-- 6) 会籍与课包（张三：年卡 + 1 次私教课包；王五：5 天后到期，用于验证 SYS-R6）
+INSERT INTO membership (id, member_id, type, start_date, end_date, status, remaining_times) VALUES
+  (1, 1, 'year',       CURDATE(), DATE_ADD(CURDATE(), INTERVAL 1 YEAR),  'active', NULL),
+  (2, 1, 'pt_package', CURDATE(), DATE_ADD(CURDATE(), INTERVAL 3 MONTH), 'active', 1),
+  (3, 3, 'year',       DATE_SUB(CURDATE(), INTERVAL 1 YEAR), DATE_ADD(CURDATE(), INTERVAL 5 DAY), 'active', NULL)
+ON DUPLICATE KEY UPDATE end_date = VALUES(end_date), status = VALUES(status),
+  remaining_times = VALUES(remaining_times);
+
+-- 7) 课程（12 号瑜伽已满员，用于验证 SYS-R3 容量校验）
+INSERT INTO course (id, code, name, type, coach_id, room, start_time, end_time, capacity, booked_count, status) VALUES
+  (11, 'C001', '动感单车', 'group', 101, 'A 厅',
+       TIMESTAMP(CURDATE(), '19:00:00'), TIMESTAMP(CURDATE(), '20:00:00'), 20, 18, 'published'),
+  (12, 'C002', '瑜伽', 'group', 102, 'B 厅',
+       TIMESTAMP(CURDATE(), '18:00:00'), TIMESTAMP(CURDATE(), '19:00:00'), 15, 15, 'full'),
+  (13, 'C003', '搏击操', 'group', 101, 'A 厅',
+       TIMESTAMP(CURDATE(), '20:00:00'), TIMESTAMP(CURDATE(), '21:00:00'), 12,  5, 'published')
+ON DUPLICATE KEY UPDATE name = VALUES(name), capacity = VALUES(capacity),
+  booked_count = VALUES(booked_count), status = VALUES(status);

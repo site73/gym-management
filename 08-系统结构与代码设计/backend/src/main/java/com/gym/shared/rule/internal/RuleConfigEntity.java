@@ -1,6 +1,9 @@
 package com.gym.shared.rule.internal;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -20,8 +23,9 @@ public class RuleConfigEntity {
     @Column(name = "rule_name", nullable = false, length = 64)
     private String ruleName;
 
-    @Lob
-    @Column(name = "params_json", nullable = false, columnDefinition = "text")
+    /** 对应 MySQL 的 JSON 列（V1 迁移中为 params_json JSON） */
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "params_json", nullable = false)
     private String paramsJson = "{}";
 
     @Column(nullable = false)

@@ -28,8 +28,8 @@ spring:
 
   flyway:
     enabled: true
-    # 迁移脚本独立目录管理（与文档/数据库设计同源）
-    locations: filesystem:../07-数据库与部署设计/db/migrations,filesystem:../07-数据库与部署设计/db/seed
+    # 迁移脚本独立目录管理：构建时从 07 目录复制进 jar 的 db/ 下（单一来源，不重复维护）
+    locations: classpath:db/migration,classpath:db/seed
     baseline-on-migrate: true
     validate-on-migrate: true
 

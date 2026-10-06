@@ -115,6 +115,21 @@
   </dependencies>
 
   <build>
+    <!-- 迁移脚本与种子数据保持"单一来源"：仍存放于 07 目录，构建时复制进 jar 的 db/ 下，
+         由 Flyway 以 classpath 方式加载，避免运行目录不同导致的路径失效 -->
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+      </resource>
+      <resource>
+        <directory>../../07-数据库与部署设计/db/migrations</directory>
+        <targetPath>db/migration</targetPath>
+      </resource>
+      <resource>
+        <directory>../../07-数据库与部署设计/db/seed</directory>
+        <targetPath>db/seed</targetPath>
+      </resource>
+    </resources>
     <plugins>
       <plugin>
         <groupId>org.springframework.boot</groupId>
