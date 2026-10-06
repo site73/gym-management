@@ -1,0 +1,13 @@
+{
+  "name": "gym-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "健身房运营管理系统 · S1 切片可运行服务（零依赖，仅用 Node 内置模块）",
+  "main": "server.js",
+  "type": "commonjs",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js",
+    "smoke": "node smoke.js"
+  }
+}

@@ -1,0 +1,316 @@
+{
+  "seq": 109,
+  "members": [
+    {
+      "id": 1,
+      "name": "张三",
+      "phone": "138****0001",
+      "status": "active",
+      "noShowCount": 3,
+      "lastVisitDays": 3,
+      "packageRemaining": 0,
+      "daysToExpire": 30,
+      "visits30": 8,
+      "createdDaysAgo": 200,
+      "penaltyUntil": "2026-10-13T13:48:49.861Z",
+      "riskLevel": "high"
+    },
+    {
+      "id": 2,
+      "name": "李四",
+      "phone": "139****0002",
+      "status": "expired",
+      "noShowCount": 0,
+      "lastVisitDays": 40,
+      "packageRemaining": 0,
+      "daysToExpire": -5,
+      "visits30": 0,
+      "createdDaysAgo": 400,
+      "riskLevel": "high"
+    },
+    {
+      "id": 3,
+      "name": "王五",
+      "phone": "137****0003",
+      "status": "active",
+      "noShowCount": 0,
+      "lastVisitDays": 35,
+      "packageRemaining": 5,
+      "daysToExpire": 60,
+      "visits30": 1,
+      "createdDaysAgo": 25,
+      "riskLevel": "high"
+    },
+    {
+      "id": 4,
+      "name": "赵六",
+      "phone": "136****0004",
+      "status": "active",
+      "noShowCount": 1,
+      "lastVisitDays": 6,
+      "packageRemaining": 3,
+      "daysToExpire": 7,
+      "visits30": 6,
+      "createdDaysAgo": 20,
+      "riskLevel": "low"
+    },
+    {
+      "id": 5,
+      "name": "钱七",
+      "phone": "135****0005",
+      "status": "active",
+      "noShowCount": 0,
+      "lastVisitDays": 2,
+      "packageRemaining": 0,
+      "daysToExpire": 90,
+      "visits30": 10,
+      "createdDaysAgo": 22,
+      "riskLevel": "low"
+    }
+  ],
+  "courses": [
+    {
+      "id": 11,
+      "name": "动感单车",
+      "time": "19:00",
+      "coach": "陈教练",
+      "capacity": 20,
+      "booked": 19,
+      "status": "published"
+    },
+    {
+      "id": 12,
+      "name": "瑜伽",
+      "time": "18:00",
+      "coach": "林教练",
+      "capacity": 15,
+      "booked": 15,
+      "status": "full"
+    },
+    {
+      "id": 13,
+      "name": "搏击操",
+      "time": "20:00",
+      "coach": "陈教练",
+      "capacity": 12,
+      "booked": 6,
+      "status": "published"
+    },
+    {
+      "id": 14,
+      "name": "拳击基础",
+      "time": "19:00",
+      "coach": "吴教练",
+      "capacity": 10,
+      "booked": 0,
+      "status": "published"
+    }
+  ],
+  "bookings": [
+    {
+      "id": "B101",
+      "memberId": 1,
+      "courseId": 11,
+      "status": "checked_in",
+      "noShowProb": 0.22,
+      "checkinChannel": "scan",
+      "operatorId": null,
+      "coachId": "陈教练",
+      "at": "2026-10-06T13:48:49.765Z",
+      "checkinAt": "2026-10-06T13:48:49.809Z"
+    },
+    {
+      "id": "B103",
+      "memberId": 4,
+      "courseId": 13,
+      "status": "cancelled",
+      "noShowProb": 0.336,
+      "checkinChannel": null,
+      "operatorId": null,
+      "coachId": "陈教练",
+      "at": "2026-10-06T13:48:49.823Z"
+    },
+    {
+      "id": "B104",
+      "memberId": 1,
+      "courseId": 13,
+      "status": "no_show",
+      "noShowProb": 0.22,
+      "checkinChannel": null,
+      "operatorId": null,
+      "coachId": "陈教练",
+      "at": "2026-10-06T13:48:49.849Z"
+    }
+  ],
+  "orders": [
+    {
+      "no": "O105",
+      "memberId": 2,
+      "bizType": "membership",
+      "amount": 3000,
+      "paidAmount": 300,
+      "status": "abnormal",
+      "times": 0,
+      "at": "2026-10-06T13:48:49.883Z"
+    }
+  ],
+  "consumptions": [
+    {
+      "id": "C102",
+      "bookingId": "B101",
+      "memberId": 1,
+      "coachId": "陈教练",
+      "courseId": 11,
+      "times": 1,
+      "amount": 200,
+      "at": "2026-10-06T13:48:49.809Z"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "T106",
+      "memberId": 1,
+      "memberName": "张三",
+      "taskType": "churn_risk",
+      "ruleCode": "SYS-R7",
+      "hit": "近 30 天爽约率 50%",
+      "status": "pending",
+      "dueAt": "2026-10-08T13:48:49.904Z"
+    },
+    {
+      "id": "T107",
+      "memberId": 2,
+      "memberName": "李四",
+      "taskType": "churn_risk",
+      "ruleCode": "SYS-R7",
+      "hit": "连续 4 周未到店",
+      "status": "pending",
+      "dueAt": "2026-10-08T13:48:49.904Z"
+    },
+    {
+      "id": "T108",
+      "memberId": 3,
+      "memberName": "王五",
+      "taskType": "churn_risk",
+      "ruleCode": "SYS-R7",
+      "hit": "连续 4 周未到店",
+      "status": "pending",
+      "dueAt": "2026-10-08T13:48:49.904Z"
+    },
+    {
+      "id": "T109",
+      "memberId": 3,
+      "memberName": "王五",
+      "taskType": "new_member_30d",
+      "ruleCode": "SYS-R9",
+      "hit": "办卡 25 天到店 1 次",
+      "status": "pending",
+      "dueAt": "2026-10-07T13:48:49.904Z"
+    }
+  ],
+  "notifications": [],
+  "alerts": [
+    {
+      "at": "2026-10-06T13:48:49.890Z",
+      "type": "PAY_AMOUNT_MISMATCH",
+      "order": "O105"
+    }
+  ],
+  "audit": [
+    {
+      "at": "2026-10-06T13:48:49.769Z",
+      "action": "booking.create",
+      "targetType": "booking",
+      "targetId": "B101",
+      "detail": "member=1 course=11"
+    },
+    {
+      "at": "2026-10-06T13:48:49.779Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R1 member=2"
+    },
+    {
+      "at": "2026-10-06T13:48:49.785Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R3 full course=12"
+    },
+    {
+      "at": "2026-10-06T13:48:49.794Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R3 conflict member=1"
+    },
+    {
+      "at": "2026-10-06T13:48:49.811Z",
+      "action": "booking.checkin",
+      "targetType": "booking",
+      "targetId": "B101",
+      "detail": "channel=scan"
+    },
+    {
+      "at": "2026-10-06T13:48:49.828Z",
+      "action": "booking.create",
+      "targetType": "booking",
+      "targetId": "B103",
+      "detail": "member=4 course=13"
+    },
+    {
+      "at": "2026-10-06T13:48:49.840Z",
+      "action": "booking.cancel",
+      "targetType": "booking",
+      "targetId": "B103",
+      "detail": null
+    },
+    {
+      "at": "2026-10-06T13:48:49.854Z",
+      "action": "booking.create",
+      "targetType": "booking",
+      "targetId": "B104",
+      "detail": "member=1 course=13"
+    },
+    {
+      "at": "2026-10-06T13:48:49.861Z",
+      "action": "penalty.applied",
+      "targetType": "member",
+      "targetId": 1,
+      "detail": "days=7"
+    },
+    {
+      "at": "2026-10-06T13:48:49.874Z",
+      "action": "booking.noShow",
+      "targetType": "booking",
+      "targetId": "B104",
+      "detail": "累计=3"
+    },
+    {
+      "at": "2026-10-06T13:48:49.877Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R4 member=1"
+    },
+    {
+      "at": "2026-10-06T13:48:49.894Z",
+      "action": "order.abnormal",
+      "targetType": "order",
+      "targetId": "O105",
+      "detail": "amountMismatch"
+    },
+    {
+      "at": "2026-10-06T13:48:49.910Z",
+      "action": "job.riskScore",
+      "targetType": "risk",
+      "targetId": null,
+      "detail": "命中 4 条"
+    }
+  ],
+  "meta": {
+    "createdAt": "2026-10-06T13:48:49.739Z",
+    "version": "0.1.0"
+  }
+}

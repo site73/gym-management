@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>健身房运营管理系统 · 可运行版（S1）</title>
+<style>
+  :root{--bg:#f5f7fb;--card:#fff;--line:#e3e8f0;--text:#1f2a37;--muted:#6b7684;--primary:#2f5597;--ok:#1e8e5a;--warn:#c9761a;--err:#c0392b;--chip:#eef3fb}
+  *{box-sizing:border-box} body{margin:0;font-family:"Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--text)}
+  header{background:linear-gradient(90deg,#2f5597,#4a7ac7);color:#fff;padding:14px 20px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  header h1{font-size:16px;margin:0} header .tag{font-size:12px;background:rgba(255,255,255,.18);padding:3px 10px;border-radius:999px}
+  .sw{margin-left:auto;display:flex;background:rgba(255,255,255,.16);border-radius:999px;padding:3px}
+  .sw button{background:transparent;border:0;color:#fff;padding:6px 16px;border-radius:999px;cursor:pointer;font-size:13px}
+  .sw button.active{background:#fff;color:var(--primary);font-weight:700}
+  main{display:grid;grid-template-columns:1fr 340px;gap:16px;padding:16px;max-width:1200px;margin:0 auto}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .panel h2{font-size:14px;margin:0 0 12px;color:var(--primary)}
+  .card{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px}
+  .card .t{font-weight:700;font-size:14px} .m{color:var(--muted);font-size:12px;margin-top:4px}
+  button.btn{background:var(--primary);color:#fff;border:0;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px}
+  button.btn.ghost{background:var(--chip);color:var(--primary)} button.btn.warn{background:var(--warn)}
+  button.btn:disabled{opacity:.45;cursor:not-allowed}
+  .chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--primary);margin-left:6px}
+  .chip.ok{background:#e6f6ee;color:var(--ok)} .chip.err{background:#fdecea;color:var(--err)} .chip.warn{background:#fdf1e3;color:var(--warn)}
+  select{padding:6px;border-radius:8px;border:1px solid var(--line)}
+  .log{font-family:Consolas,monospace;font-size:12px;line-height:1.7;max-height:520px;overflow:auto;background:#0f172a;color:#cfe3ff;border-radius:10px;padding:12px;white-space:pre-wrap}
+  table{width:100%;border-collapse:collapse;font-size:13px} th,td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:left}
+  th{color:var(--muted);font-weight:600}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>健身房运营管理系统 · S1 可运行版</h1>
+  <span class="tag">真实 API + 文件持久化（零依赖 Node）</span>
+  <div class="sw">
+    <button id="swM" class="active" onclick="switchView('member')">会员端</button>
+    <button id="swA" onclick="switchView('admin')">门店后台</button>
+  </div>
+</header>
+
+<main>
+  <section id="viewMember" class="panel">
+    <h2>会员端（模拟小程序）</h2>
+    <div class="card">
+      <div>当前会员：<select id="memberSel" onchange="loadMine()"></select></div>
+      <div class="m" id="memberInfo"></div>
+    </div>
+    <div id="courseList"></div>
+    <h2 style="margin-top:16px">我的预约</h2>
+    <div id="myBookings"></div>
+  </section>
+
+  <section id="viewAdmin" class="panel hidden">
+    <h2>门店后台</h2>
+    <div class="card">
+      <div class="t">定时任务</div>
+      <div style="margin-top:8px">
+        <button class="btn" onclick="runRisk()">执行每日流失风险评分</button>
+        <button class="btn ghost" onclick="loadSummary()">刷新经营摘要</button>
+        <button class="btn warn" onclick="resetDb()">重置数据</button>
+      </div>
+    </div>
+    <div class="card"><div class="t">经营摘要</div><div id="summaryBox" class="m">未加载</div></div>
+    <div class="card"><div class="t">跟进/预警任务</div><div id="taskBox" class="m">未加载</div></div>
+    <div class="card"><div class="t">爽约预测（SYS-R8）</div>
+      <div style="margin-top:8px"><button class="btn ghost" onclick="loadPrediction()">预测"动感单车"爽约概率</button></div>
+      <div id="predBox" class="m">未加载</div>
+    </div>
+    <div class="card"><div class="t">私教提成（SYS-R10）</div>
+      <div style="margin-top:8px"><button class="btn ghost" onclick="loadSettlement()">查看本月提成</button></div>
+      <div id="setBox" class="m">未加载</div>
+    </div>
+  </section>
+
+  <aside class="panel">
+    <h2>接口调用日志（真实请求）</h2>
+    <div class="log" id="log"></div>
+  </aside>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+function log(msg, ok) {
+  const box = $('log');
+  box.textContent += `[${new Date().toLocaleTimeString('zh-CN',{hour12:false})}] ${ok === false ? '✗ ' : ok === true ? '✓ ' : ''}${msg}\n`;
+  box.scrollTop = box.scrollHeight;
+}
+async function api(method, url, body) {
+  const opt = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opt.body = JSON.stringify(body);
+  const res = await fetch(url, opt);
+  const data = await res.json().catch(() => ({}));
+  log(`${method} ${url} → ${res.status} ${JSON.stringify(data).slice(0,160)}`, res.ok);
+  return { status: res.status, data };
+}
+
+let members = [];
+async function boot() {
+  const a = await api('GET', '/api/courses');
+  renderCourses(a.data);
+  // 会员下拉（用固定 5 个种子会员）
+  members = [];
+  for (const id of [1,2,3,4,5]) { const r = await api('GET', `/api/members/${id}`); if (r.data && r.data.id) members.push(r.data); }
+  $('memberSel').innerHTML = members.map(m => `<option value="${m.id}">${m.name}（会籍${m.status === 'active' ? '有效' : m.status === 'expired' ? '过期' : '冻结'}）</option>`).join('');
+  loadMine();
+}
+function renderCourses(list) {
+  $('courseList').innerHTML = list.map(c => `
+    <div class="card">
+      <div class="t">${c.name} · ${c.time}</div>
+      <div class="m">教练：${c.coach} ｜ 剩余名额：${c.remaining}/${c.capacity}
+        ${c.remaining <= 0 ? '<span class="chip err">已满</span>' : ''}</div>
+      <div style="margin-top:8px"><button class="btn" onclick="doBook(${c.id})">立即约课</button></div>
+    </div>`).join('');
+}
+async function doBook(courseId) {
+  const memberId = Number($('memberSel').value);
+  const r = await api('POST', '/api/bookings', { memberId, courseId });
+  if (r.status !== 200) alert((r.data.ruleCode ? '[' + r.data.ruleCode + '] ' : '') + (r.data.reason || '预约失败'));
+  await boot(); loadMine();
+}
+async function loadMine() {
+  const memberId = Number($('memberSel').value);
+  const m = members.find(x => x.id === memberId);
+  if (m) $('memberInfo').textContent = `会籍状态：${m.status}｜累计爽约：${m.noShowCount} 次｜课包余次：${m.packageRemaining}｜限制剩余：${m.penaltyDaysRemaining || 0} 天`;
+  const r = await api('GET', `/api/members/${memberId}/bookings`);
+  $('myBookings').innerHTML = r.data.length === 0 ? '<div class="m">暂无预约</div>' : r.data.map(b => `
+    <div class="card">
+      <div class="t">${b.courseName} · ${b.time}</div>
+      <div class="m">状态：<span class="chip ${b.status === 'checked_in' ? 'ok' : b.status === 'no_show' ? 'err' : ''}">${b.status}</span>
+        ${b.checkinChannel ? '｜渠道：' + b.checkinChannel : ''}</div>
+      <div style="margin-top:8px">
+        <button class="btn" ${b.status === 'booked' ? '' : 'disabled'} onclick="doCheckin(${b.id})">扫码签到</button>
+        <button class="btn ghost" ${b.status === 'booked' ? '' : 'disabled'} onclick="doCancel(${b.id})">取消</button>
+        <button class="btn warn" ${b.status === 'booked' ? '' : 'disabled'} onclick="doNoShow(${b.id})">模拟超时未签到</button>
+      </div>
+    </div>`).join('');
+}
+async function doCheckin(id) { await api('POST', `/api/bookings/${id}/checkin`, { channel: 'scan' }); loadMine(); }
+async function doCancel(id) { await api('POST', `/api/bookings/${id}/cancel`, {}); boot(); loadMine(); }
+async function doNoShow(id) { const r = await api('POST', `/api/bookings/${id}/no-show`, {}); if (r.data.penaltyApplied) alert('累计爽约达 3 次：已限制预约 7 天'); boot(); loadMine(); }
+
+function switchView(v) {
+  $('viewMember').classList.toggle('hidden', v !== 'member');
+  $('viewAdmin').classList.toggle('hidden', v !== 'admin');
+  $('swM').classList.toggle('active', v === 'member'); $('swA').classList.toggle('active', v === 'admin');
+  if (v === 'admin') { loadSummary(); loadRisks(); }
+}
+async function runRisk() { const r = await api('POST', '/api/jobs/risk-score', {}); alert(`生成 ${r.data.length} 条跟进/预警任务`); loadRisks(); }
+async function loadRisks() {
+  const r = await api('GET', '/api/risks');
+  $('taskBox').innerHTML = r.data.length === 0 ? '当前无任务' :
+    r.data.map(t => `<div>⚠️ ${t.memberName}：${t.hit} <span class="chip warn">${t.ruleCode}</span></div>`).join('');
+}
+async function loadSummary() {
+  const r = await api('GET', '/api/reports/summary');
+  const s = r.data;
+  $('summaryBox').innerHTML = `会员 ${s.members}（有效 ${s.activeMembers}）｜课程 ${s.courses}｜预约 ${s.bookings}（已签到 ${s.checkedIn}、爽约 ${s.noShow}）<br>爽约率 ${s.noShowRate}｜待办任务 ${s.pendingTasks}｜异常订单 ${s.abnormalOrders}`;
+}
+async function loadPrediction() {
+  const r = await api('GET', '/api/predictions?courseId=11');
+  $('predBox').innerHTML = r.data.ok
+    ? `阈值 T=${r.data.threshold}<br>` + r.data.rows.map(x => `${x.memberName}：概率 ${x.prob} → ${x.action}`).join('<br>')
+    : '无数据';
+}
+async function loadSettlement() {
+  const r = await api('GET', '/api/settlement');
+  $('setBox').innerHTML = r.data.length === 0 ? '暂无课消记录（先签到上课）' :
+    r.data.map(x => `教练${x.coachId}：课消 ${x.times} 次 × 比例 ${x.rate} → 提成 ¥${x.commission}`).join('<br>');
+}
+async function resetDb() { await api('POST', '/api/admin/reset', {}); boot(); loadSummary(); }
+
+boot();
+</script>
+</body>
+</html>
