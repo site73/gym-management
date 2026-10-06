@@ -1,69 +1,87 @@
 package com.gym.booking.api;
 
 import com.gym.booking.application.BookingAppService;
-import jakarta.validation.constraints.NotNull;
-import org.springframework.http.HttpStatus;
+import com.gym.identity.api.AuthContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 /**
- * 预约 REST 入口（小程序端与前台后台共用）。
+ * 约课 REST 入口。
  *
- * <p>错误语义对齐《接口契约初步清单》：
- * 409 BOOKING_REJECTED + reason（会籍过期 / 课程已满 / 时间冲突 / 爽约限制）。
+ * <p>权限约束（服务端强制，不依赖前端）：
+ * <ul>
+ *   <li>会员账号：只能查/约/取消**自己**的预约；判爽约属门店操作</li>
+ *   <li>门店后台：可查看全部、按会员过滤、判爽约</li>
+ * </ul>
  */
 @RestController
 @RequestMapping("/api/bookings")
 public class BookingController {
 
-    private final BookingAppService bookingAppService;
+    private final BookingAppService bookingService;
 
-    public BookingController(BookingAppService bookingAppService) {
-        this.bookingAppService = bookingAppService;
+    public BookingController(BookingAppService bookingService) {
+        this.bookingService = bookingService;
     }
 
-    public record BookRequest(@NotNull Long memberId, @NotNull Long courseId) {}
-    public record CheckInRequest(String channel, Long operatorId) {}
+    public record BookRequest(Long memberId, Long courseId) {}
+    public record CheckinRequest(String channel) {}
 
-    /** 约课（REQ-B4-001） */
-    @PostMapping
-    public ResponseEntity<?> book(@RequestBody BookRequest req) {
-        var result = bookingAppService.book(req.memberId(), req.courseId());
-        if (!result.ok()) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(new RejectBody("BOOKING_REJECTED", result.ruleCode(), result.reason()));
-        }
-        return ResponseEntity.ok(result);
-    }
-
-    /** 签到（会员扫码或前台代签，REQ-B4-002 / REQ-B4-005） */
-    @PostMapping("/{id}/checkin")
-    public ResponseEntity<Void> checkIn(@PathVariable Long id,
-                                        @RequestBody(required = false) CheckInRequest req) {
-        String channel = (req == null || req.channel() == null) ? "scan" : req.channel();
-        Long operatorId = req == null ? null : req.operatorId();
-        bookingAppService.checkIn(id, channel, operatorId);
-        return ResponseEntity.noContent().build();
-    }
-
-    /** 预约列表（管理后台；可选按会员过滤） */
+    /** 预约列表：会员只能看到自己的 */
     @GetMapping
-    public java.util.List<BookingView> list(@RequestParam(required = false) Long memberId) {
-        return bookingAppService.listBookings(memberId);
+    public List<BookingView> list(@RequestParam(required = false) Long memberId) {
+        return bookingService.listBookings(AuthContext.effectiveMemberId(memberId));
     }
 
-    /** 取消预约（SYS-R3：释放名额） */
-    @PostMapping("/{id}/cancel")
-    public ResponseEntity<Void> cancel(@PathVariable Long id) {
-        bookingAppService.cancel(id);
+    /** 预约详情 */
+    @GetMapping("/{id}")
+    public BookingView detail(@PathVariable Long id) {
+        BookingView view = bookingService.getBooking(id);
+        AuthContext.assertSelfOrStaff(view.memberId());
+        return view;
+    }
+
+    /** 约课（会员端发起时忽略传入的 memberId，强制本人） */
+    @PostMapping
+    public ResponseEntity<Map<String, Object>> book(@RequestBody BookRequest req) {
+        Long memberId = AuthContext.effectiveMemberId(req.memberId());
+        if (memberId == null) throw new IllegalArgumentException("缺少会员 ID");
+        var r = bookingService.book(memberId, req.courseId());
+        return r.ok()
+                ? ResponseEntity.ok(Map.of("ok", true, "bookingId", r.bookingId(),
+                        "status", String.valueOf(r.status())))
+                : ResponseEntity.status(409).body(Map.of("ok", false,
+                        "ruleCode", String.valueOf(r.ruleCode()), "reason", String.valueOf(r.reason())));
+    }
+
+    /** 签到：本人或门店代签 */
+    @PostMapping("/{id}/checkin")
+    public ResponseEntity<Void> checkIn(@PathVariable Long id, @RequestBody(required = false) CheckinRequest req) {
+        BookingView view = bookingService.getBooking(id);
+        AuthContext.assertSelfOrStaff(view.memberId());
+        String channel = (req == null || req.channel() == null || req.channel().isBlank())
+                ? (AuthContext.current().isStaff() ? "front_desk" : "scan") : req.channel();
+        Long operatorId = AuthContext.current().isStaff() ? AuthContext.current().userId() : null;
+        bookingService.checkIn(id, channel, operatorId);
         return ResponseEntity.noContent().build();
     }
 
-    /** 爽约判定（内部/定时任务调用，REQ-B4-003） */
-    @PostMapping("/{id}/no-show")
-    public ResponseEntity<Integer> markNoShow(@PathVariable Long id) {
-        return ResponseEntity.ok(bookingAppService.markNoShow(id));
+    /** 取消：本人或门店 */
+    @PostMapping("/{id}/cancel")
+    public Map<String, Object> cancel(@PathVariable Long id) {
+        BookingView view = bookingService.getBooking(id);
+        AuthContext.assertSelfOrStaff(view.memberId());
+        bookingService.cancel(id);
+        return Map.of("ok", true);
     }
 
-    public record RejectBody(String code, String ruleCode, String reason) {}
+    /** 判爽约：仅门店后台（REQ-B4-003） */
+    @PostMapping("/{id}/no-show")
+    public Map<String, Object> noShow(@PathVariable Long id) {
+        AuthContext.requireStaff();
+        return Map.of("ok", true, "noShowCount", bookingService.markNoShow(id));
+    }
 }

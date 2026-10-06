@@ -92,8 +92,20 @@ public class MembershipFacadeImpl implements MembershipFacade {
     @Override
     public List<MemberView> listMembers() {
         return memberRepository.findAll().stream()
-                .map(m -> new MemberView(m.getId(), null, m.getName(), null, m.getStatus(), m.getRiskLevel()))
+                .map(m -> toView(m, packageRemaining(m.getId())))
                 .toList();
+    }
+
+    @Override
+    public MemberView memberOf(Long memberId) {
+        return memberRepository.findById(memberId)
+                .map(m -> toView(m, packageRemaining(memberId)))
+                .orElseThrow(() -> new IllegalArgumentException("会员不存在：" + memberId));
+    }
+
+    private MemberView toView(MemberEntity m, int packageRemaining) {
+        return new MemberView(m.getId(), m.getMemberNo(), m.getName(), m.getPhone(), m.getStatus(),
+                m.getRiskLevel(), packageRemaining, penaltyDaysRemaining(m.getId()), m.getCreatedAt());
     }
 
     /** SYS-R6：扫描 D 天内到期的有效会籍，返回需提醒的会员 */
@@ -109,5 +121,32 @@ public class MembershipFacadeImpl implements MembershipFacade {
         auditLogger.log("job.renewRemind", "membership", null,
                 "days=" + daysBefore + ", count=" + names.size());
         return names;
+    }
+
+    /** SYS-R4：施加爽约限制 */
+    @Override
+    @Transactional
+    public void applyPenalty(Long memberId, int days) {
+        var member = memberRepository.findById(memberId)
+                .orElseThrow(() -> new IllegalArgumentException("会员不存在：" + memberId));
+        member.setPenaltyUntil(java.time.LocalDateTime.now().plusDays(days));
+        memberRepository.save(member);
+        auditLogger.log("penalty.applied", "member", memberId, "days=" + days);
+    }
+
+    /** SYS-R4：限制剩余天数（向上取整，已过期返回 0） */
+    @Override
+    public int penaltyDaysRemaining(Long memberId) {
+        return memberRepository.findById(memberId)
+                .map(MemberEntity::getPenaltyUntil)
+                .filter(until -> until != null && until.isAfter(java.time.LocalDateTime.now()))
+                .map(until -> (int) Math.ceil(
+                        java.time.Duration.between(java.time.LocalDateTime.now(), until).toMinutes() / 1440.0))
+                .orElse(0);
+    }
+
+    @Override
+    public boolean exists(Long memberId) {
+        return memberId != null && memberRepository.existsById(memberId);
     }
 }

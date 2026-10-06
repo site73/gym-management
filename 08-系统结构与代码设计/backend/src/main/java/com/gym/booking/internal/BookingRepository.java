@@ -15,6 +15,23 @@ public interface BookingRepository extends JpaRepository<BookingEntity, Long> {
     /** 会员的预约列表（倒序，管理后台用） */
     java.util.List<BookingEntity> findByMemberIdOrderByIdDesc(Long memberId);
 
+    long countByMemberIdAndStatusAndCheckinAtAfter(Long memberId, String status, java.time.LocalDateTime after);
+
+    java.util.Optional<BookingEntity> findFirstByMemberIdAndStatusOrderByCheckinAtDesc(Long memberId, String status);
+
+    @org.springframework.data.jpa.repository.Query("select b.status, count(b) from BookingEntity b group by b.status")
+    java.util.List<Object[]> countGroupByStatus();
+
+    /**
+     * 按教练汇总近 N 天已签到的课时数（SYS-R10）。
+     * 只读联表 course 取教练，不写对方表。
+     */
+    @org.springframework.data.jpa.repository.Query(value =
+            "select c.coach_id, count(*) from booking b join course c on c.id = b.course_id "
+          + "where b.status = 'checked_in' and b.checkin_at >= :from and c.coach_id is not null "
+          + "group by c.coach_id", nativeQuery = true)
+    java.util.List<Object[]> sumCheckedInTimesByCoach(@Param("from") java.time.LocalDateTime from);
+
     /** 幂等判重：只针对"有效"状态的预约（取消后可再约同一课程） */
     Optional<BookingEntity> findFirstByMemberIdAndCourseIdAndStatusIn(
             Long memberId, Long courseId, java.util.Collection<String> statuses);

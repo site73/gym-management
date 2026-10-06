@@ -42,4 +42,22 @@ public interface BookingFacade {
      * @param memberId 会员 ID；为 null 时返回全部
      */
     java.util.List<BookingView> listBookings(Long memberId);
+
+    /** 单个预约详情（用于权限校验：是否本人预约） */
+    BookingView getBooking(Long bookingId);
+
+    /** 会员在给定窗口内的签到次数（SYS-R7/R8 的活跃度指标） */
+    long countCheckedIn(Long memberId, int withinDays);
+
+    /** 距上次签到的天数；从未签到返回 null */
+    Integer daysSinceLastCheckin(Long memberId);
+
+    /** 各状态的预约数量（报表用） */
+    java.util.Map<String, Long> countByStatus();
+
+    /** 按教练汇总近 N 天已签到的课时数（SYS-R10 提成核算） */
+    java.util.List<CoachTimes> checkedInTimesByCoach(int withinDays);
+
+    /** 教练课时汇总行 */
+    record CoachTimes(Long coachId, long times) {}
 }

@@ -19,6 +19,7 @@ spring:
     init:
       mode: always
       encoding: UTF-8            # 关键：否则 Windows 默认 GBK 读取 UTF-8 脚本会导致中文乱码
+      schema-locations: classpath:schema-local.sql   # 补建 sys_user/sys_role/sys_user_role（登录用）
       data-locations: classpath:data-local.sql
 
   flyway:

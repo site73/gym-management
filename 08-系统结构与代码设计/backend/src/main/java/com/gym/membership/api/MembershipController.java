@@ -1,12 +1,15 @@
 package com.gym.membership.api;
 
+import com.gym.identity.api.AuthContext;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
- * 会员与会籍查询入口（后台管理页用）。
- * 只依赖模块对外契约 {@link MembershipFacade}。
+ * 会员与会籍入口。
+ *
+ * <p>会员账号只能读取本人信息；会员列表与定时任务仅门店后台可用。
  */
 @RestController
 @RequestMapping("/api")
@@ -18,26 +21,37 @@ public class MembershipController {
         this.membershipFacade = membershipFacade;
     }
 
-    /** 会员列表 */
+    /** 会员列表（仅门店后台） */
     @GetMapping("/members")
     public List<MemberView> members() {
+        AuthContext.requireStaff();
         return membershipFacade.listMembers();
     }
 
-    /** 单会员会籍状态（约课校验用） */
+    /** 会员详情（本人或门店） */
+    @GetMapping("/members/{id}")
+    public MemberView member(@PathVariable Long id) {
+        AuthContext.assertSelfOrStaff(id);
+        return membershipFacade.memberOf(id);
+    }
+
+    /** 会籍状态（本人或门店） */
     @GetMapping("/members/{id}/status")
-    public java.util.Map<String, Object> status(@PathVariable Long id) {
-        return java.util.Map.of(
+    public Map<String, Object> status(@PathVariable Long id) {
+        AuthContext.assertSelfOrStaff(id);
+        return Map.of(
                 "memberId", id,
                 "status", membershipFacade.statusOf(id),
                 "effective", membershipFacade.isEffective(id),
-                "packageRemaining", membershipFacade.packageRemaining(id));
+                "packageRemaining", membershipFacade.packageRemaining(id),
+                "penaltyDaysRemaining", membershipFacade.penaltyDaysRemaining(id));
     }
 
-    /** 会籍到期提醒扫描（SYS-R6，默认提前 7 天） */
+    /** 会籍到期提醒扫描（SYS-R6，仅门店后台） */
     @PostMapping("/jobs/renew-remind")
-    public java.util.Map<String, Object> renewRemind(@RequestParam(defaultValue = "7") int days) {
+    public Map<String, Object> renewRemind(@RequestParam(defaultValue = "7") int days) {
+        AuthContext.requireStaff();
         List<String> reminded = membershipFacade.remindExpiring(days);
-        return java.util.Map.of("daysBefore", days, "count", reminded.size(), "members", reminded);
+        return Map.of("daysBefore", days, "count", reminded.size(), "members", reminded);
     }
 }

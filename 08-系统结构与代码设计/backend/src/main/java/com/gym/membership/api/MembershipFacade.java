@@ -31,6 +31,9 @@ public interface MembershipFacade {
     /** 会员列表（后台管理页用） */
     java.util.List<MemberView> listMembers();
 
+    /** 单个会员详情（会员端"我的信息"用） */
+    MemberView memberOf(Long memberId);
+
     /**
      * 会籍到期提醒扫描（SYS-R6，D=7）。
      *
@@ -38,4 +41,17 @@ public interface MembershipFacade {
      * @return 需要提醒的会员姓名列表
      */
     java.util.List<String> remindExpiring(int daysBefore);
+
+    /**
+     * 施加爽约限制（SYS-R4）。
+     *
+     * @param days 限制天数
+     */
+    void applyPenalty(Long memberId, int days);
+
+    /** 预约限制剩余天数；0 表示未被限制 */
+    int penaltyDaysRemaining(Long memberId);
+
+    /** 会员是否存在 */
+    boolean exists(Long memberId);
 }

@@ -37,6 +37,30 @@ public interface RuleEngine {
      */
     RuleResult checkNoShowPenalty(Long memberId);
 
+    /** SYS-R4 的 N：触发限制的累计爽约次数 */
+    int penaltyThreshold();
+
+    /** SYS-R4 的 restrictDays：限制天数 */
+    int penaltyDays();
+
+    /** SYS-R8 的 T：爽约预测告警阈值 */
+    double predictionThreshold();
+
+    /** SYS-R9 的 days / minVisits（新会员首月跟进） */
+    int newMemberDays();
+
+    /** SYS-R9 的 minVisits */
+    int newMemberMinVisits();
+
+    /** SYS-R7 的 noVisitWeeks（连续未到店周数） */
+    int noVisitWeeks();
+
+    /** SYS-R7 的 noShowRate（爽约率阈值） */
+    double riskNoShowRate();
+
+    /** SYS-R10 的 rate（提成比例） */
+    double commissionRate();
+
     /** 规则结果：passed=false 时 reason 必填，供提示与追溯。 */
     record RuleResult(boolean passed, String ruleCode, String reason) {
         public static RuleResult ok(String ruleCode) {

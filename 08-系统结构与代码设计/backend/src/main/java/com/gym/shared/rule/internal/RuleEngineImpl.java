@@ -50,17 +50,42 @@ public class RuleEngineImpl implements RuleEngine {
         return RuleResult.reject("frozen".equals(status) ? "SYS-R2" : "SYS-R1", reason);
     }
 
-    /** SYS-R4 爽约惩罚：累计爽约 ≥ N → 限制预约 D 天 */
+    /** SYS-R4 爽约惩罚：存在生效中的限制 → 拒绝；否则按累计爽约次数判断 */
     @Override
     public RuleResult checkNoShowPenalty(Long memberId) {
-        int n = intParam("SYS-R4", "N", 3);
-        int restrictDays = intParam("SYS-R4", "restrictDays", 7);
-        int noShowCount = bookingQuery.noShowCount(memberId);
-        if (noShowCount >= n) {
-            return RuleResult.reject("SYS-R4", "已被限制预约，剩余 " + restrictDays + " 天");
+        int left = membershipQuery.penaltyDaysRemaining(memberId);
+        if (left > 0) {
+            return RuleResult.reject("SYS-R4", "已被限制预约，剩余 " + left + " 天");
+        }
+        if (bookingQuery.noShowCount(memberId) >= penaltyThreshold()) {
+            return RuleResult.reject("SYS-R4", "累计爽约已达 " + penaltyThreshold() + " 次，暂不可约课");
         }
         return RuleResult.ok("SYS-R4");
     }
+
+    @Override
+    public int penaltyThreshold() { return intParam("SYS-R4", "N", 3); }
+
+    @Override
+    public int penaltyDays() { return intParam("SYS-R4", "restrictDays", 7); }
+
+    @Override
+    public double predictionThreshold() { return doubleParam("SYS-R8", "T", 0.60); }
+
+    @Override
+    public int newMemberDays() { return intParam("SYS-R9", "days", 30); }
+
+    @Override
+    public int newMemberMinVisits() { return intParam("SYS-R9", "minVisits", 2); }
+
+    @Override
+    public int noVisitWeeks() { return intParam("SYS-R7", "noVisitWeeks", 4); }
+
+    @Override
+    public double riskNoShowRate() { return doubleParam("SYS-R7", "noShowRate", 0.30); }
+
+    @Override
+    public double commissionRate() { return doubleParam("SYS-R10", "rate", 0.20); }
 
     /** SYS-R3 约课校验：容量 + 时间冲突 */
     @Override
@@ -80,8 +105,17 @@ public class RuleEngineImpl implements RuleEngine {
         return v instanceof Number num ? num.intValue() : defaultValue;
     }
 
+    private double doubleParam(String ruleCode, String key, double defaultValue) {
+        Object v = paramsOf(ruleCode).get(key);
+        return v instanceof Number num ? num.doubleValue() : defaultValue;
+    }
+
     /* ---- 跨模块只读查询接口（由各模块实现，避免直接访问对方数据表） ---- */
-    public interface MembershipQuery { String statusOf(Long memberId); }
+    public interface MembershipQuery {
+        String statusOf(Long memberId);
+        /** SYS-R4：预约限制剩余天数（0 = 未被限制） */
+        int penaltyDaysRemaining(Long memberId);
+    }
     public interface CourseQuery { int remainingSeats(Long courseId); }
     public interface BookingQuery {
         int noShowCount(Long memberId);

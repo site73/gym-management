@@ -5,6 +5,7 @@ import com.gym.booking.api.BookingView;
 import com.gym.booking.internal.BookingEntity;
 import com.gym.booking.internal.BookingRepository;
 import com.gym.course.api.CourseFacade;
+import com.gym.membership.api.MembershipFacade;
 import com.gym.shared.audit.AuditLogger;
 import com.gym.shared.event.BookingEvents;
 import com.gym.shared.rule.RuleEngine;
@@ -26,17 +27,20 @@ public class BookingAppService implements BookingFacade {
     private final BookingRepository bookingRepository;
     private final RuleEngine ruleEngine;
     private final CourseFacade courseFacade;
+    private final MembershipFacade membershipFacade;
     private final AuditLogger auditLogger;
     private final ApplicationEventPublisher events;
 
     public BookingAppService(BookingRepository bookingRepository,
                              RuleEngine ruleEngine,
                              CourseFacade courseFacade,
+                             MembershipFacade membershipFacade,
                              AuditLogger auditLogger,
                              ApplicationEventPublisher events) {
         this.bookingRepository = bookingRepository;
         this.ruleEngine = ruleEngine;
         this.courseFacade = courseFacade;
+        this.membershipFacade = membershipFacade;
         this.auditLogger = auditLogger;
         this.events = events;
     }
@@ -87,7 +91,13 @@ public class BookingAppService implements BookingFacade {
                 booking.getId(), booking.getMemberId(), booking.getCourseId()));
     }
 
-    /** 爽约判定（REQ-B4-003；通常由定时任务驱动） */
+    /**
+     * 爽约判定（REQ-B4-003）。
+     *
+     * <p>累计爽约达到 SYS-R4 的 N 次时，经 {@link MembershipFacade} 施加 D 天预约限制。
+     *
+     * @return 近 30 天累计爽约次数
+     */
     @Transactional
     public int markNoShow(Long bookingId) {
         var booking = bookingRepository.findById(bookingId)
@@ -95,6 +105,11 @@ public class BookingAppService implements BookingFacade {
         booking.markNoShow();
         bookingRepository.save(booking);
         int count = Math.toIntExact(countNoShow(booking.getMemberId(), 30));
+        if (count >= ruleEngine.penaltyThreshold()) {
+            membershipFacade.applyPenalty(booking.getMemberId(), ruleEngine.penaltyDays());
+            auditLogger.log("penalty.applied", "member", booking.getMemberId(),
+                    "days=" + ruleEngine.penaltyDays() + ", 累计爽约=" + count);
+        }
         auditLogger.log("booking.noShow", "booking", bookingId, "累计=" + count);
         events.publishEvent(new BookingEvents.BookingNoShowEvent(
                 booking.getId(), booking.getMemberId(), booking.getCourseId(), count));
@@ -149,5 +164,45 @@ public class BookingAppService implements BookingFacade {
     private static BookingView toView(BookingEntity b) {
         return new BookingView(b.getId(), b.getMemberId(), b.getCourseId(), b.getStatus(),
                 b.getCheckinChannel(), b.getOperatorId(), b.getBookedAt(), b.getCheckinAt());
+    }
+
+    @Override
+    public BookingView getBooking(Long bookingId) {
+        return bookingRepository.findById(bookingId)
+                .map(BookingAppService::toView)
+                .orElseThrow(() -> new IllegalArgumentException("预约不存在：" + bookingId));
+    }
+
+    @Override
+    public long countCheckedIn(Long memberId, int withinDays) {
+        return bookingRepository.countByMemberIdAndStatusAndCheckinAtAfter(
+                memberId, "checked_in", java.time.LocalDateTime.now().minusDays(withinDays));
+    }
+
+    @Override
+    public Integer daysSinceLastCheckin(Long memberId) {
+        return bookingRepository.findFirstByMemberIdAndStatusOrderByCheckinAtDesc(memberId, "checked_in")
+                .map(b -> b.getCheckinAt() == null ? null
+                        : (int) java.time.Duration.between(b.getCheckinAt(), java.time.LocalDateTime.now()).toDays())
+                .orElse(null);
+    }
+
+    @Override
+    public java.util.Map<String, Long> countByStatus() {
+        java.util.Map<String, Long> map = new java.util.LinkedHashMap<>();
+        for (Object[] row : bookingRepository.countGroupByStatus()) {
+            map.put(String.valueOf(row[0]), ((Number) row[1]).longValue());
+        }
+        return map;
+    }
+
+    @Override
+    public java.util.List<CoachTimes> checkedInTimesByCoach(int withinDays) {
+        java.util.List<CoachTimes> list = new java.util.ArrayList<>();
+        for (Object[] row : bookingRepository.sumCheckedInTimesByCoach(
+                java.time.LocalDateTime.now().minusDays(withinDays))) {
+            list.add(new CoachTimes(((Number) row[0]).longValue(), ((Number) row[1]).longValue()));
+        }
+        return list;
     }
 }

@@ -37,4 +37,9 @@ public class AuditLogEntity {
     }
 
     public Long getId() { return id; }
+    public String getAction() { return action; }
+    public String getTargetType() { return targetType; }
+    public Long getTargetId() { return targetId; }
+    public String getDetail() { return detail; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 }

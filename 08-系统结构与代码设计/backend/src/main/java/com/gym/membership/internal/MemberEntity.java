@@ -28,6 +28,10 @@ public class MemberEntity {
     @Column(name = "risk_level", length = 16)
     private String riskLevel;
 
+    /** 预约限制截止时间（SYS-R4：累计爽约达 N 次后限制 restrictDays 天） */
+    @Column(name = "penalty_until")
+    private LocalDateTime penaltyUntil;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -49,4 +53,9 @@ public class MemberEntity {
     public void setStatus(String status) { this.status = status; }
     public String getRiskLevel() { return riskLevel; }
     public void setRiskLevel(String riskLevel) { this.riskLevel = riskLevel; }
+    public LocalDateTime getPenaltyUntil() { return penaltyUntil; }
+    public void setPenaltyUntil(LocalDateTime penaltyUntil) { this.penaltyUntil = penaltyUntil; }
+    public String getMemberNo() { return memberNo; }
+    public String getPhone() { return phone; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 }

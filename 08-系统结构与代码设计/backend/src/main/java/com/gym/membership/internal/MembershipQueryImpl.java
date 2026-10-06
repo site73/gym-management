@@ -17,4 +17,14 @@ public class MembershipQueryImpl implements RuleEngineImpl.MembershipQuery {
     public String statusOf(Long memberId) {
         return memberRepository.findById(memberId).map(MemberEntity::getStatus).orElse("expired");
     }
+
+    @Override
+    public int penaltyDaysRemaining(Long memberId) {
+        return memberRepository.findById(memberId)
+                .map(MemberEntity::getPenaltyUntil)
+                .filter(until -> until != null && until.isAfter(java.time.LocalDateTime.now()))
+                .map(until -> (int) Math.ceil(java.time.Duration
+                        .between(java.time.LocalDateTime.now(), until).toMinutes() / 1440.0))
+                .orElse(0);
+    }
 }

@@ -3,6 +3,7 @@ package com.gym.booking;
 import com.gym.booking.application.BookingAppService;
 import com.gym.booking.internal.BookingRepository;
 import com.gym.course.api.CourseFacade;
+import com.gym.membership.api.MembershipFacade;
 import com.gym.shared.audit.AuditLogger;
 import com.gym.shared.rule.RuleEngine;
 import org.junit.jupiter.api.DisplayName;
@@ -24,10 +25,11 @@ class BookingRulesTest {
     private final BookingRepository repo = mock(BookingRepository.class);
     private final RuleEngine ruleEngine = mock(RuleEngine.class);
     private final CourseFacade courseFacade = mock(CourseFacade.class);
+    private final MembershipFacade membershipFacade = mock(MembershipFacade.class);
     private final AuditLogger audit = mock(AuditLogger.class);
     private final ApplicationEventPublisher events = mock(ApplicationEventPublisher.class);
     private final BookingAppService service =
-            new BookingAppService(repo, ruleEngine, courseFacade, audit, events);
+            new BookingAppService(repo, ruleEngine, courseFacade, membershipFacade, audit, events);
 
     private void noExistingBooking() {
         when(repo.findFirstByMemberIdAndCourseIdAndStatusIn(anyLong(), anyLong(), anyCollection()))
