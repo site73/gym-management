@@ -1,0 +1,79 @@
+# 应用配置（密钥走环境变量，不硬编码）
+server:
+  port: 8080
+  forward-headers-strategy: framework   # 配合 Nginx 反代获取真实 IP/协议
+
+spring:
+  application:
+    name: gym-backend
+  profiles:
+    active: ${APP_PROFILE:pilot}
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:gym}?useUnicode=true&characterEncoding=utf8mb4&serverTimezone=Asia/Shanghai
+    username: ${DB_USER:gym_app}
+    password: ${DB_PASSWORD:change-me-app}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+
+  jpa:
+    hibernate:
+      ddl-auto: validate          # 结构以迁移脚本为准，禁止 Hibernate 自动改表
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: false
+
+  flyway:
+    enabled: true
+    # 迁移脚本独立目录管理（与文档/数据库设计同源）
+    locations: filesystem:../07-数据库与部署设计/db/migrations,filesystem:../07-数据库与部署设计/db/seed
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
+  jackson:
+    time-zone: Asia/Shanghai
+    date-format: yyyy-MM-dd HH:mm:ss
+
+# 外部接口（微信：登录/支付/消息）——密钥来自环境变量
+wechat:
+  appid: ${WECHAT_APPID:}
+  secret: ${WECHAT_SECRET:}
+  pay:
+    mchid: ${WXPAY_MCHID:}
+    key: ${WXPAY_KEY:}
+    notify-url: ${WXPAY_NOTIFY_URL:https://localhost/api/pay/notify}
+  notify:
+    channel: ${NOTIFY_CHANNEL:wx_subscribe}   # 对应待关闭问题 Q10
+
+# 业务规则参数以数据库 rule_config 为准，此处仅放不可外置的技术参数
+gym:
+  booking:
+    checkin-window-minutes: 15   # 签到窗口（REQ-B4-003；需求提出“可配置”，见原型问题 P-04）
+  scheduler:
+    risk-score-cron: "0 30 2 * * ?"     # 每日 02:30 流失风险评分
+    renew-remind-cron: "0 0 9 * * ?"    # 每日 09:00 续费提醒扫描
+    settlement-cron: "0 0 3 1 * ?"      # 每月 1 日 03:00 结算
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: when-authorized
+
+logging:
+  file:
+    name: logs/gym-backend.log
+  level:
+    root: INFO
+    com.gym: DEBUG
