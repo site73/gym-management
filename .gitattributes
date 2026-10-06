@@ -1,6 +1,11 @@
 # 统一文本文件行尾为 LF
 * text=auto eol=lf
 
+# Windows 批处理必须使用 CRLF（LF 会导致 cmd 的 goto / 标签解析异常，
+# 表现为"双击脚本一闪而过、什么都没发生"）
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
 # 二进制文件（避免被当作文本处理）
 *.docx binary
 *.png  binary
