@@ -1,0 +1,137 @@
+openapi: 3.0.3
+info:
+  title: 健身房运营管理 API（S1 切片）
+  version: 1.0.0
+  description: >-
+    对应需求 REQ-B3-001/002、REQ-B4-001/002/005。
+    契约与 .feature、测试代码、迁移脚本同版本库管理；
+    接口变更必须同步更新行为驱动测试场景。错误语义遵循《接口契约初步清单》。
+servers:
+  - url: https://localhost/api
+    description: 本地/试点
+paths:
+  /courses:
+    get:
+      tags: [course]
+      summary: 查询课程与剩余名额（REQ-B3-002）
+      parameters:
+        - name: date
+          in: query
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: 课程列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Course' }
+
+  /bookings:
+    post:
+      tags: [booking]
+      summary: 约课（REQ-B4-001；校验 SYS-R1/R2、SYS-R4、SYS-R3）
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/BookRequest' }
+      responses:
+        '200':
+          description: 预约成功
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/BookingResult' }
+        '409':
+          description: 校验未通过（会籍过期｜会籍冻结｜课程已满｜时间冲突｜爽约限制）
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RejectBody' }
+
+  /bookings/{id}/checkin:
+    post:
+      tags: [booking]
+      summary: 签到（REQ-B4-002；前台代签 REQ-B4-005）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channel: { type: string, enum: [scan, front_desk], default: scan }
+                operatorId: { type: integer, format: int64, nullable: true }
+      responses:
+        '204': { description: 签到成功 }
+        '409': { description: 当前状态不可签到 }
+
+  /bookings/{id}/cancel:
+    post:
+      tags: [booking]
+      summary: 取消预约并释放名额（SYS-R3）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '204': { description: 已取消 }
+
+  /bookings/{id}/no-show:
+    post:
+      tags: [booking]
+      summary: 爽约判定（REQ-B4-003；通常由定时任务调用）
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer, format: int64 }
+      responses:
+        '200':
+          description: 返回该会员累计爽约次数
+          content:
+            application/json:
+              schema: { type: integer }
+
+components:
+  schemas:
+    BookRequest:
+      type: object
+      required: [memberId, courseId]
+      properties:
+        memberId: { type: integer, format: int64 }
+        courseId: { type: integer, format: int64 }
+    BookingResult:
+      type: object
+      properties:
+        ok: { type: boolean }
+        bookingId: { type: integer, format: int64 }
+        status: { type: string, example: booked }
+    RejectBody:
+      type: object
+      properties:
+        code: { type: string, example: BOOKING_REJECTED }
+        ruleCode: { type: string, example: SYS-R1, description: 命中的系统规则编号 }
+        reason: { type: string, example: 会籍已过期，请先续费 }
+    Course:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        name: { type: string }
+        type: { type: string, enum: [group, pt] }
+        coachName: { type: string }
+        startTime: { type: string, format: date-time }
+        capacity: { type: integer }
+        bookedCount: { type: integer }
+        status: { type: string, enum: [published, full, ongoing, finished, cancelled] }
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []

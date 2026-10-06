@@ -1,0 +1,10 @@
+{
+  "name": "gym-s1-bdd-verify",
+  "version": "1.0.0",
+  "private": true,
+  "description": "S1 切片行为驱动验收执行器（读取 05 目录的 .feature，输出真实测试结果）",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node run.js"
+  }
+}

@@ -1,0 +1,122 @@
+{
+  "slice": "S1",
+  "executedAt": "2026-10-06T13:36:07.944Z",
+  "total": 18,
+  "passed": 18,
+  "failed": 0,
+  "passRate": "100.0%",
+  "results": [
+    {
+      "file": "booking.feature",
+      "feature": "约课校验",
+      "scenario": "会籍有效时预约成功",
+      "status": "passed"
+    },
+    {
+      "file": "booking.feature",
+      "feature": "约课校验",
+      "scenario": "会籍过期时不可约课",
+      "status": "passed"
+    },
+    {
+      "file": "booking.feature",
+      "feature": "约课校验",
+      "scenario": "会籍冻结期间不可约课",
+      "status": "passed"
+    },
+    {
+      "file": "booking.feature",
+      "feature": "约课校验",
+      "scenario": "课程满员时拒绝并支持候补",
+      "status": "passed"
+    },
+    {
+      "file": "booking.feature",
+      "feature": "约课校验",
+      "scenario": "同会员同一时段重复预约被拒绝",
+      "status": "passed"
+    },
+    {
+      "file": "booking.feature",
+      "feature": "约课校验",
+      "scenario": "重复提交保持幂等",
+      "status": "passed"
+    },
+    {
+      "file": "booking.feature",
+      "feature": "约课校验",
+      "scenario": "排课时教练时间冲突被拒绝",
+      "status": "passed"
+    },
+    {
+      "file": "attendance.feature",
+      "feature": "签到与爽约",
+      "scenario": "扫码签到成功",
+      "status": "passed"
+    },
+    {
+      "file": "attendance.feature",
+      "feature": "签到与爽约",
+      "scenario": "超时未签到判定为爽约",
+      "status": "passed"
+    },
+    {
+      "file": "attendance.feature",
+      "feature": "签到与爽约",
+      "scenario": "累计爽约三次限制预约七天",
+      "status": "passed"
+    },
+    {
+      "file": "attendance.feature",
+      "feature": "签到与爽约",
+      "scenario": "开课前取消预约释放名额",
+      "status": "passed"
+    },
+    {
+      "file": "attendance.feature",
+      "feature": "签到与爽约",
+      "scenario": "前台代签记录代办人",
+      "status": "passed"
+    },
+    {
+      "file": "membership.feature",
+      "feature": "会籍与课包",
+      "scenario": "支付成功生成会籍合同",
+      "status": "passed"
+    },
+    {
+      "file": "membership.feature",
+      "feature": "会籍与课包",
+      "scenario": "到期前七天发送续费提醒",
+      "status": "passed"
+    },
+    {
+      "file": "membership.feature",
+      "feature": "会籍与课包",
+      "scenario": "会籍到期未续费置为过期",
+      "status": "passed"
+    },
+    {
+      "file": "membership.feature",
+      "feature": "会籍与课包",
+      "scenario": "支付回调失败时订单异常且会籍不变更",
+      "status": "passed"
+    },
+    {
+      "file": "membership.feature",
+      "feature": "会籍与课包",
+      "scenario": "支付金额与订单不一致",
+      "status": "passed"
+    },
+    {
+      "file": "membership.feature",
+      "feature": "会籍与课包",
+      "scenario": "结课核销私教课包一次",
+      "status": "passed"
+    }
+  ],
+  "pendingSlices": [
+    "warning.feature",
+    "commission.feature"
+  ]
+}
