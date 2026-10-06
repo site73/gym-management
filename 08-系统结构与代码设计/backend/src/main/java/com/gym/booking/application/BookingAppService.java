@@ -1,6 +1,7 @@
 package com.gym.booking.application;
 
 import com.gym.booking.api.BookingFacade;
+import com.gym.booking.api.BookingView;
 import com.gym.booking.internal.BookingEntity;
 import com.gym.booking.internal.BookingRepository;
 import com.gym.course.api.CourseFacade;
@@ -134,5 +135,19 @@ public class BookingAppService implements BookingFacade {
     @Override
     public boolean hasPendingPenalty(Long memberId) {
         return !ruleEngine.checkNoShowPenalty(memberId).passed();
+    }
+
+    /** 预约列表（管理后台）：memberId 为空则返回全部 */
+    @Override
+    public java.util.List<BookingView> listBookings(Long memberId) {
+        java.util.List<BookingEntity> list = (memberId == null)
+                ? bookingRepository.findAll()
+                : bookingRepository.findByMemberIdOrderByIdDesc(memberId);
+        return list.stream().map(BookingAppService::toView).toList();
+    }
+
+    private static BookingView toView(BookingEntity b) {
+        return new BookingView(b.getId(), b.getMemberId(), b.getCourseId(), b.getStatus(),
+                b.getCheckinChannel(), b.getOperatorId(), b.getBookedAt(), b.getCheckinAt());
     }
 }

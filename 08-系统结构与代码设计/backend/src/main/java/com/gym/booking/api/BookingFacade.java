@@ -35,4 +35,11 @@ public interface BookingFacade {
 
     /** 会员是否有未处理的爽约（用于提示与限制说明）。 */
     boolean hasPendingPenalty(Long memberId);
+
+    /**
+     * 预约列表（管理后台用）。
+     *
+     * @param memberId 会员 ID；为 null 时返回全部
+     */
+    java.util.List<BookingView> listBookings(Long memberId);
 }

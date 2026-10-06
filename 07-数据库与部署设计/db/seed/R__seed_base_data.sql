@@ -68,10 +68,12 @@ INSERT INTO dict_item (dict_type, item_code, item_name, sort_no) VALUES
 ON DUPLICATE KEY UPDATE item_name = VALUES(item_name);
 
 -- 5) 演示用会员（大作业演示数据；手机号已脱敏存储）
+--    张三=有效、李四=过期、王五=有效(5天后到期)、赵六=冻结（用于验证 SYS-R2 冻结不可约课）
 INSERT INTO member (id, member_no, name, phone, status, risk_level) VALUES
   (1, 'M001', '张三', '138****0001', 'active',  NULL),
   (2, 'M002', '李四', '139****0002', 'expired', NULL),
-  (3, 'M003', '王五', '137****0003', 'active',  NULL)
+  (3, 'M003', '王五', '137****0003', 'active',  NULL),
+  (4, 'M004', '赵六', '136****0004', 'frozen',  NULL)
 ON DUPLICATE KEY UPDATE name = VALUES(name), status = VALUES(status);
 
 -- 6) 会籍与课包（张三：年卡 + 1 次私教课包；王五：5 天后到期，用于验证 SYS-R6）

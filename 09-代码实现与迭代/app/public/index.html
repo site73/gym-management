@@ -111,14 +111,21 @@ async function api(method, url, body) {
 }
 
 let members = [];
-async function boot() {
-  const a = await api('GET', '/api/courses');
-  renderCourses(a.data);
-  // 会员下拉（用固定 5 个种子会员）
+const STATUS_CN = { booked: '已约', checked_in: '已签到', no_show: '爽约', cancelled: '已取消' };
+
+/** 初始化：加载会员下拉 + 课程 + 我的预约（页面只执行一次） */
+async function initPage() {
   members = [];
   for (const id of [1,2,3,4,5]) { const r = await api('GET', `/api/members/${id}`); if (r.data && r.data.id) members.push(r.data); }
   $('memberSel').innerHTML = members.map(m => `<option value="${m.id}">${m.name}（会籍${m.status === 'active' ? '有效' : m.status === 'expired' ? '过期' : '冻结'}）</option>`).join('');
-  loadMine();
+  await refreshCourses();
+  await loadMine();
+}
+
+/** 仅刷新课程余位，不触碰会员下拉（避免刷新后选择被重置） */
+async function refreshCourses() {
+  const a = await api('GET', '/api/courses');
+  renderCourses(Array.isArray(a.data) ? a.data : []);
 }
 function renderCourses(list) {
   $('courseList').innerHTML = list.map(c => `
@@ -126,35 +133,54 @@ function renderCourses(list) {
       <div class="t">${c.name} · ${c.time}</div>
       <div class="m">教练：${c.coach} ｜ 剩余名额：${c.remaining}/${c.capacity}
         ${c.remaining <= 0 ? '<span class="chip err">已满</span>' : ''}</div>
-      <div style="margin-top:8px"><button class="btn" onclick="doBook(${c.id})">立即约课</button></div>
+      <div style="margin-top:8px"><button class="btn" onclick="doBook('${c.id}')">立即约课</button></div>
     </div>`).join('');
+}
+async function loadMine() {
+  const memberId = Number($('memberSel').value);
+  // 每次都重新拉取当前会员，保证课包余次/爽约次数等为最新
+  const r0 = await api('GET', `/api/members/${memberId}`);
+  const m = r0.data || {};
+  $('memberInfo').textContent = `会籍状态：${m.status}｜累计爽约：${m.noShowCount} 次｜课包余次：${m.packageRemaining}｜限制剩余：${m.penaltyDaysRemaining || 0} 天`;
+  const r = await api('GET', `/api/members/${memberId}/bookings`);
+  const list = Array.isArray(r.data) ? r.data : [];
+  $('myBookings').innerHTML = list.length === 0 ? '<div class="m">暂无预约</div>' : list.slice().reverse().map(b => {
+    const can = b.status === 'booked';
+    const cls = b.status === 'checked_in' ? 'ok' : (b.status === 'no_show' || b.status === 'cancelled') ? 'err' : '';
+    const channel = b.checkinChannel ? '｜渠道：' + (b.checkinChannel === 'front_desk' ? '前台代签' : '扫码') : '';
+    return `<div class="card">
+      <div class="t">${b.courseName} · ${b.time}</div>
+      <div class="m">状态：<span class="chip ${cls}">${STATUS_CN[b.status] || b.status}</span>${channel}</div>
+      <div style="margin-top:8px">
+        <button class="btn" ${can ? '' : 'disabled'} onclick="doCheckin('${b.id}')">扫码签到</button>
+        <button class="btn ghost" ${can ? '' : 'disabled'} onclick="doCancel('${b.id}')">取消预约</button>
+        <button class="btn warn" ${can ? '' : 'disabled'} onclick="doNoShow('${b.id}')">模拟超时未签到</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 async function doBook(courseId) {
   const memberId = Number($('memberSel').value);
   const r = await api('POST', '/api/bookings', { memberId, courseId });
-  if (r.status !== 200) alert((r.data.ruleCode ? '[' + r.data.ruleCode + '] ' : '') + (r.data.reason || '预约失败'));
-  await boot(); loadMine();
+  if (r.status !== 200) alert((r.data && r.data.ruleCode ? '[' + r.data.ruleCode + '] ' : '') + ((r.data && r.data.reason) || '预约失败'));
+  await refreshCourses(); await loadMine();
 }
-async function loadMine() {
-  const memberId = Number($('memberSel').value);
-  const m = members.find(x => x.id === memberId);
-  if (m) $('memberInfo').textContent = `会籍状态：${m.status}｜累计爽约：${m.noShowCount} 次｜课包余次：${m.packageRemaining}｜限制剩余：${m.penaltyDaysRemaining || 0} 天`;
-  const r = await api('GET', `/api/members/${memberId}/bookings`);
-  $('myBookings').innerHTML = r.data.length === 0 ? '<div class="m">暂无预约</div>' : r.data.map(b => `
-    <div class="card">
-      <div class="t">${b.courseName} · ${b.time}</div>
-      <div class="m">状态：<span class="chip ${b.status === 'checked_in' ? 'ok' : b.status === 'no_show' ? 'err' : ''}">${b.status}</span>
-        ${b.checkinChannel ? '｜渠道：' + b.checkinChannel : ''}</div>
-      <div style="margin-top:8px">
-        <button class="btn" ${b.status === 'booked' ? '' : 'disabled'} onclick="doCheckin(${b.id})">扫码签到</button>
-        <button class="btn ghost" ${b.status === 'booked' ? '' : 'disabled'} onclick="doCancel(${b.id})">取消</button>
-        <button class="btn warn" ${b.status === 'booked' ? '' : 'disabled'} onclick="doNoShow(${b.id})">模拟超时未签到</button>
-      </div>
-    </div>`).join('');
+async function doCheckin(id) {
+  const r = await api('POST', `/api/bookings/${id}/checkin`, { channel: 'scan' });
+  if (r.status !== 200) alert('签到失败：' + ((r.data && r.data.reason) || ''));
+  await refreshCourses(); await loadMine();
 }
-async function doCheckin(id) { await api('POST', `/api/bookings/${id}/checkin`, { channel: 'scan' }); loadMine(); }
-async function doCancel(id) { await api('POST', `/api/bookings/${id}/cancel`, {}); boot(); loadMine(); }
-async function doNoShow(id) { const r = await api('POST', `/api/bookings/${id}/no-show`, {}); if (r.data.penaltyApplied) alert('累计爽约达 3 次：已限制预约 7 天'); boot(); loadMine(); }
+async function doCancel(id) {
+  const r = await api('POST', `/api/bookings/${id}/cancel`, {});
+  if (r.status !== 200) alert('取消失败：' + ((r.data && r.data.reason) || ''));
+  await refreshCourses(); await loadMine();
+}
+async function doNoShow(id) {
+  const r = await api('POST', `/api/bookings/${id}/no-show`, {});
+  if (r.status !== 200) alert('操作失败：' + ((r.data && r.data.reason) || ''));
+  if (r.data && r.data.penaltyApplied) alert('累计爽约达 3 次：已限制预约 7 天');
+  await refreshCourses(); await loadMine();
+}
 
 function switchView(v) {
   $('viewMember').classList.toggle('hidden', v !== 'member');
@@ -187,9 +213,9 @@ async function loadSettlement() {
   $('setBox').innerHTML = r.data.length === 0 ? '暂无课消记录（先签到上课）' :
     r.data.map(x => `教练${x.coachId}：课消 ${x.times} 次 × 比例 ${x.rate} → 提成 ¥${x.commission}`).join('<br>');
 }
-async function resetDb() { await api('POST', '/api/admin/reset', {}); boot(); loadSummary(); }
+async function resetDb() { await api('POST', '/api/admin/reset', {}); await initPage(); await loadSummary(); }
 
-boot();
+initPage();
 </script>
 </body>
 </html>

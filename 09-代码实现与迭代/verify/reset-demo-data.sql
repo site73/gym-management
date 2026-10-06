@@ -17,6 +17,7 @@ UPDATE member SET status = CASE id
     WHEN 1 THEN 'active'
     WHEN 2 THEN 'expired'
     WHEN 3 THEN 'active'
+    WHEN 4 THEN 'frozen'
     ELSE status END;
 UPDATE membership SET remaining_times = CASE id
     WHEN 2 THEN 1

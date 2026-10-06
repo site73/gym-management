@@ -53,6 +53,11 @@
       <div id="memberBox" class="m">加载中…</div>
       <h2 style="margin-top:16px">课程与余位（GET /api/courses）</h2>
       <div id="courseBox" class="m">加载中…</div>
+      <h2 style="margin-top:16px">预约列表（GET /api/bookings）</h2>
+      <div class="m">
+        <button class="btn ghost" onclick="loadBookings()">刷新</button>
+      </div>
+      <div id="bookingBox" class="m">加载中…</div>
     </section>
 
     <!-- ============ 收费与对账 ============ -->
@@ -131,12 +136,50 @@ async function boot(){
   members = Array.isArray(m.data) ? m.data : [];
   $('memberBox').innerHTML = members.length ? members.map(x =>
     `<div>${x.name} <span class="chip ${x.status==='active'?'ok':'err'}">${x.status}</span>
-      <button class="btn ghost" onclick="quickBook(${x.id})">约课</button></div>`).join('') : '无会员';
+      <button class="btn ghost" onclick="quickBook('${x.id}')">约课</button></div>`).join('') : '无会员';
   $('orderMember').innerHTML = members.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
 
   await loadCourses();
+  await loadBookings();
   await loadOrders('');
   await loadSettlements();
+}
+// 预约状态中文（与后端口径一致）
+const STATUS_CN = { booked: '已约', checked_in: '已签到', no_show: '爽约', cancelled: '已取消' };
+
+async function loadBookings(){
+  const r = await api('GET','/api/bookings');
+  const list = Array.isArray(r.data) ? r.data : [];
+  if (list.length === 0) { $('bookingBox').innerHTML = '暂无预约'; return; }
+  $('bookingBox').innerHTML = `<table>
+    <tr><th>预约号</th><th>会员</th><th>课程</th><th>状态</th><th>操作</th></tr>
+    ${list.map(b=>{
+      const can = b.status === 'booked';
+      return `<tr>
+        <td>${b.id}</td><td>${b.memberId}</td><td>${b.courseId}</td>
+        <td><span class="chip ${b.status==='checked_in'?'ok':(b.status==='no_show'||b.status==='cancelled')?'err':''}">${STATUS_CN[b.status] || b.status}</span></td>
+        <td>
+          <button class="btn ghost" ${can?'':'disabled'} onclick="checkIn('${b.id}')">签到</button>
+          <button class="btn ghost" ${can?'':'disabled'} onclick="cancelBooking('${b.id}')">取消</button>
+          <button class="btn warn" ${can?'':'disabled'} onclick="markNoShow('${b.id}')">判爽约</button>
+        </td></tr>`;}).join('')}
+  </table>`;
+}
+async function checkIn(id){
+  const r = await api('POST',`/api/bookings/${id}/checkin`,{channel:'scan'});
+  if (r.status !== 204 && r.status !== 200) alert('签到失败');
+  await loadBookings(); await loadCourses();
+}
+async function cancelBooking(id){
+  const r = await api('POST',`/api/bookings/${id}/cancel`,{});
+  if (r.status !== 204 && r.status !== 200) alert('取消失败');
+  await loadBookings(); await loadCourses();
+}
+async function markNoShow(id){
+  const r = await api('POST',`/api/bookings/${id}/no-show`,{});
+  if (r.status !== 200) alert('操作失败');
+  else alert('已判爽约，累计 ' + r.data + ' 次');
+  await loadBookings(); await loadCourses();
 }
 async function loadCourses(){
   const c = await api('GET','/api/courses');
@@ -144,7 +187,7 @@ async function loadCourses(){
   $('courseBox').innerHTML = courses.map(x =>
     `<div class="card"><div class="t">${x.name} · ${(x.startTime||'').slice(11,16)}</div>
       <div class="m">容量 ${x.capacity}｜已约 ${x.bookedCount}｜剩余 ${x.remaining} <span class="chip ${x.remaining>0?'ok':'err'}">${x.status}</span></div>
-      <div>${members.map(mm=>`<button class="btn ghost" onclick="book(${mm.id},${x.id})">${mm.name} 约课</button>`).join('')}</div>
+      <div>${members.map(mm=>`<button class="btn ghost" onclick="book('${mm.id}','${x.id}')">${mm.name} 约课</button>`).join('')}</div>
     </div>`).join('');
 }
 function quickBook(memberId){
@@ -156,6 +199,7 @@ async function book(memberId, courseId){
   if (r.status !== 200){ alert(`[${(r.data&&r.data.ruleCode)||''}] ${(r.data&&r.data.reason)||'约课失败'}`); }
   else { alert('约课成功，预约号 ' + r.data.bookingId); }
   await loadCourses();
+  await loadBookings();
 }
 function switchView(v){
   $('viewBooking').classList.toggle('hidden', v!=='booking');

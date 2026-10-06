@@ -83,6 +83,9 @@ public class BookingEntity {
     public Long getCourseId() { return courseId; }
     public String getStatus() { return status; }
     public LocalDateTime getCheckinAt() { return checkinAt; }
+    public String getCheckinChannel() { return checkinChannel; }
+    public Long getOperatorId() { return operatorId; }
+    public LocalDateTime getBookedAt() { return bookedAt; }
     public BigDecimal getNoShowProb() { return noShowProb; }
     public void setNoShowProb(BigDecimal p) { this.noShowProb = p; }
 }

@@ -46,6 +46,12 @@ public class BookingController {
         return ResponseEntity.noContent().build();
     }
 
+    /** 预约列表（管理后台；可选按会员过滤） */
+    @GetMapping
+    public java.util.List<BookingView> list(@RequestParam(required = false) Long memberId) {
+        return bookingAppService.listBookings(memberId);
+    }
+
     /** 取消预约（SYS-R3：释放名额） */
     @PostMapping("/{id}/cancel")
     public ResponseEntity<Void> cancel(@PathVariable Long id) {
