@@ -15,3 +15,10 @@ __pycache__/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Maven 构建输出
+target/
+*.class
+
+# 运行期数据（可自动重建）
+09-代码实现与迭代/app/data/db.json

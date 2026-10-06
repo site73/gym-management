@@ -92,7 +92,7 @@ public class BookingAppService implements BookingFacade {
                 .orElseThrow(() -> new IllegalArgumentException("预约不存在：" + bookingId));
         booking.markNoShow();
         bookingRepository.save(booking);
-        int count = Math.toIntExact(noShowCount(booking.getMemberId(), 30));
+        int count = Math.toIntExact(countNoShow(booking.getMemberId(), 30));
         auditLogger.log("booking.noShow", "booking", bookingId, "累计=" + count);
         events.publishEvent(new BookingEvents.BookingNoShowEvent(
                 booking.getId(), booking.getMemberId(), booking.getCourseId(), count));

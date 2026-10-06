@@ -40,14 +40,22 @@ class ModuleBoundaryTest {
     }
 
     @Test
-    @DisplayName("跨模块访问必须经过 api 契约，禁止依赖对方 internal 实现")
-    void modules_should_only_access_other_modules_api_package() {
-        ArchRule rule = noClasses().that().resideInAPackage("com.gym.(*)..")
-                .and().resideOutsideOfPackages("com.gym.shared..")
-                .should().dependOnClassesThat().resideInAPackage("com.gym.(*).internal..");
-        // 注：仅允许依赖同模块 internal 与对方模块 api；
-        // 跨模块依赖对方 internal 视为破坏契约（在评审中按此规则收紧）
-        rule.check(classes);
+    @DisplayName("只有本模块可访问自己的 internal 实现，跨模块必须走 api 契约")
+    void internal_packages_are_module_private() {
+        ArchRule bookingInternal = noClasses()
+                .that().resideOutsideOfPackage("com.gym.booking..")
+                .should().dependOnClassesThat().resideInAPackage("com.gym.booking.internal..");
+        bookingInternal.check(classes);
+
+        ArchRule courseInternal = noClasses()
+                .that().resideOutsideOfPackage("com.gym.course..")
+                .should().dependOnClassesThat().resideInAPackage("com.gym.course.internal..");
+        courseInternal.check(classes);
+
+        ArchRule membershipInternal = noClasses()
+                .that().resideOutsideOfPackage("com.gym.membership..")
+                .should().dependOnClassesThat().resideInAPackage("com.gym.membership.internal..");
+        membershipInternal.check(classes);
     }
 
     @Test

@@ -12,7 +12,8 @@ const path = require('path');
 const svc = require('./src/service');
 const store = require('./src/store');
 
-const PORT = Number(process.env.PORT || 3000);
+const PORT = Number(process.env.PORT || 3111);
+const HOST = process.env.HOST || '127.0.0.1';   // 仅监听本机回环，不对外暴露
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
 function json(res, code, body) {
@@ -122,12 +123,12 @@ const server = http.createServer(async (req, res) => {
 
 function start(port = PORT, silent = false) {
   return new Promise(resolve => {
-    server.listen(port, () => {
+    server.listen(port, HOST, () => {
       if (!silent) {
         console.log('====================================================');
         console.log(' 健身房运营管理系统 · S1 切片已启动');
-        console.log(` 页面： http://localhost:${port}`);
-        console.log(` 健康检查： http://localhost:${port}/api/health`);
+        console.log(` 页面： http://${HOST}:${port}`);
+        console.log(` 健康检查： http://${HOST}:${port}/api/health`);
         console.log(` 数据文件： ${store.DATA_FILE}`);
         console.log(' 按 Ctrl+C 停止');
         console.log('====================================================');
