@@ -194,7 +194,10 @@ const login = async (u, p) => call('POST', '/api/auth/login', { username: u, pas
         r.status === 200 && r.data.tasks.length >= 1);
 
   r = await call('GET', '/api/risks', undefined, T_MGR);
-  check(D, '预警任务列表', '200', `${r.status} ${Array.isArray(r.data) ? r.data.length : 0} 条`, r.status === 200);
+  const riskTasks = r.data && Array.isArray(r.data.tasks) ? r.data.tasks : [];
+  check(D, '预警任务与统计', '200 + 含 tasks 与 totalMembers',
+        `${r.status} tasks=${riskTasks.length} highRisk=${r.data && r.data.highRisk}`,
+        r.status === 200 && Array.isArray(r.data.tasks) && typeof r.data.totalMembers === 'number');
 
   // 先制造一笔待核验预约，保证预测有数据可算（否则 rows 恒为 0，测不出算法）
   await call('POST', '/api/bookings', { memberId: 2, courseId: 11 }, T_MGR);

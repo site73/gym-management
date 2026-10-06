@@ -538,14 +538,25 @@ async function renewRemind() {
 }
 
 /* ================= 门店后台：风险与预测 ================= */
+// 请求序号：过期响应直接丢弃，避免"自动加载"与"手动扫描"互相覆盖（曾导致偶发无内容）
+let riskReqSeq = 0;
+
 async function runRiskScore() {
+  const seq = ++riskReqSeq;
   const r = await api('POST', '/api/jobs/risk-score');
+  if (seq !== riskReqSeq) return;                       // 已有更新请求，丢弃本次结果
   if (r.status !== 200) { alert('扫描失败：' + ((r.data && r.data.reason) || '')); return; }
   renderRisks(r.data.tasks, r.data);
 }
 async function loadRisks() {
+  const seq = ++riskReqSeq;
   const r = await api('GET', '/api/risks');
-  renderRisks(Array.isArray(r.data) ? r.data : [], null);
+  if (seq !== riskReqSeq) return;
+  const d = r.data;
+  if (!d) { $('riskBox').innerHTML = '加载失败'; return; }
+  // 接口返回 RiskSummary（含统计与任务）；兼容纯数组的旧格式
+  const tasks = Array.isArray(d) ? d : (d.tasks || []);
+  renderRisks(tasks, Array.isArray(d) ? null : d);
 }
 function renderRisks(tasks, summary) {
   const head = summary
