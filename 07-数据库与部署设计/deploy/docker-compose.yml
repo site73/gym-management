@@ -1,0 +1,81 @@
+# =============================================================
+# 单机部署编排（试点环境 = 生产环境的简化版）
+# 组件：MySQL 8（主库）+ Redis（缓存/队列）+ 后端 API + Nginx（静态与反代）
+# 用法：cp .env.example .env && docker compose up -d
+# =============================================================
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: gym-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-time-zone=+08:00
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./backup:/var/backups/mysql
+    ports:
+      - "127.0.0.1:3306:3306"   # 仅本机可连，不暴露公网
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: gym-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+
+  api:
+    build: ../                # 后端代码目录（第八/九阶段产出）
+    container_name: gym-api
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${APP_PROFILE}
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      REDIS_HOST: redis
+      WECHAT_APPID: ${WECHAT_APPID}
+      WECHAT_SECRET: ${WECHAT_SECRET}
+      WXPAY_MCHID: ${WXPAY_MCHID}
+      WXPAY_KEY: ${WXPAY_KEY}
+      TZ: Asia/Shanghai
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ./logs:/app/logs
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: gym-nginx
+    restart: unless-stopped
+    depends_on: [api]
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    ports:
+      - "80:80"
+      - "443:443"
+
+volumes:
+  mysql-data:
+  redis-data:
