@@ -1,5 +1,5 @@
 {
-  "seq": 109,
+  "seq": 111,
   "members": [
     {
       "id": 1,
@@ -75,7 +75,7 @@
       "time": "19:00",
       "coach": "陈教练",
       "capacity": 20,
-      "booked": 19,
+      "booked": 20,
       "status": "published"
     },
     {
@@ -93,7 +93,7 @@
       "time": "20:00",
       "coach": "陈教练",
       "capacity": 12,
-      "booked": 6,
+      "booked": 7,
       "status": "published"
     },
     {
@@ -140,6 +140,28 @@
       "operatorId": null,
       "coachId": "陈教练",
       "at": "2026-10-06T13:48:49.849Z"
+    },
+    {
+      "id": "B110",
+      "memberId": 3,
+      "courseId": 11,
+      "status": "booked",
+      "noShowProb": 0.45,
+      "checkinChannel": null,
+      "operatorId": null,
+      "coachId": "陈教练",
+      "at": "2026-10-06T14:25:51.481Z"
+    },
+    {
+      "id": "B111",
+      "memberId": 5,
+      "courseId": 13,
+      "status": "booked",
+      "noShowProb": 0.25,
+      "checkinChannel": null,
+      "operatorId": null,
+      "coachId": "陈教练",
+      "at": "2026-10-06T14:25:56.865Z"
     }
   ],
   "orders": [
@@ -307,6 +329,97 @@
       "targetType": "risk",
       "targetId": null,
       "detail": "命中 4 条"
+    },
+    {
+      "at": "2026-10-06T14:25:39.728Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R4 member=1"
+    },
+    {
+      "at": "2026-10-06T14:25:46.410Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R4 member=1"
+    },
+    {
+      "at": "2026-10-06T14:25:47.048Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R4 member=1"
+    },
+    {
+      "at": "2026-10-06T14:25:47.216Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R4 member=1"
+    },
+    {
+      "at": "2026-10-06T14:25:47.368Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R4 member=1"
+    },
+    {
+      "at": "2026-10-06T14:25:47.495Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R4 member=1"
+    },
+    {
+      "at": "2026-10-06T14:25:48.112Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R4 member=1"
+    },
+    {
+      "at": "2026-10-06T14:25:48.433Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R4 member=1"
+    },
+    {
+      "at": "2026-10-06T14:25:51.482Z",
+      "action": "booking.create",
+      "targetType": "booking",
+      "targetId": "B110",
+      "detail": "member=3 course=11"
+    },
+    {
+      "at": "2026-10-06T14:25:56.866Z",
+      "action": "booking.create",
+      "targetType": "booking",
+      "targetId": "B111",
+      "detail": "member=5 course=13"
+    },
+    {
+      "at": "2026-10-06T14:25:57.216Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R4 member=1"
+    },
+    {
+      "at": "2026-10-06T14:25:57.360Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R4 member=1"
+    },
+    {
+      "at": "2026-10-06T14:25:57.504Z",
+      "action": "booking.reject",
+      "targetType": "booking",
+      "targetId": null,
+      "detail": "SYS-R4 member=1"
     }
   ],
   "meta": {

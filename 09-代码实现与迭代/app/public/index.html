@@ -12,7 +12,9 @@
   .sw{margin-left:auto;display:flex;background:rgba(255,255,255,.16);border-radius:999px;padding:3px}
   .sw button{background:transparent;border:0;color:#fff;padding:6px 16px;border-radius:999px;cursor:pointer;font-size:13px}
   .sw button.active{background:#fff;color:var(--primary);font-weight:700}
-  main{display:grid;grid-template-columns:1fr 340px;gap:16px;padding:16px;max-width:1200px;margin:0 auto}
+  main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;padding:16px;max-width:1240px;margin:0 auto;align-items:start}
+  .views{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .side{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}
   .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
   .panel h2{font-size:14px;margin:0 0 12px;color:var(--primary)}
   .card{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px}
@@ -40,6 +42,7 @@
 </header>
 
 <main>
+  <div class="views">
   <section id="viewMember" class="panel">
     <h2>会员端（模拟小程序）</h2>
     <div class="card">
@@ -72,9 +75,13 @@
       <div id="setBox" class="m">未加载</div>
     </div>
   </section>
+  </div>
 
-  <aside class="panel">
-    <h2>接口调用日志（真实请求）</h2>
+  <aside class="panel side">
+    <h2>接口调用日志（真实请求）<span class="chip" id="logCount" style="margin-left:6px">0 条</span></h2>
+    <div style="margin-bottom:8px">
+      <button class="btn ghost" onclick="document.getElementById('log').textContent='';logCount()">清空日志</button>
+    </div>
     <div class="log" id="log"></div>
   </aside>
 </main>
@@ -85,6 +92,13 @@ function log(msg, ok) {
   const box = $('log');
   box.textContent += `[${new Date().toLocaleTimeString('zh-CN',{hour12:false})}] ${ok === false ? '✗ ' : ok === true ? '✓ ' : ''}${msg}\n`;
   box.scrollTop = box.scrollHeight;
+  logCount();
+}
+function logCount() {
+  const box = $('log');
+  const n = box.textContent.split('\n').filter(x => x.trim()).length;
+  const el = $('logCount');
+  if (el) el.textContent = n + ' 条';
 }
 async function api(method, url, body) {
   const opt = { method, headers: { 'Content-Type': 'application/json' } };

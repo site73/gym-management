@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>健身房运营管理系统 · 后端管理页（Spring Boot）</title>
+<style>
+  :root{--bg:#f5f7fb;--card:#fff;--line:#e3e8f0;--text:#1f2a37;--muted:#6b7684;--primary:#2f5597;--ok:#1e8e5a;--warn:#c9761a;--err:#c0392b;--chip:#eef3fb}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--text)}
+  header{background:linear-gradient(90deg,#2f5597,#4a7ac7);color:#fff;padding:14px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  header h1{font-size:16px;margin:0}
+  header .tag{font-size:12px;background:rgba(255,255,255,.18);padding:3px 10px;border-radius:999px}
+  .sw{margin-left:auto;display:flex;background:rgba(255,255,255,.16);border-radius:999px;padding:3px}
+  .sw button{background:transparent;border:0;color:#fff;padding:6px 16px;border-radius:999px;cursor:pointer;font-size:13px}
+  .sw button.active{background:#fff;color:var(--primary);font-weight:700}
+  main{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;padding:16px;max-width:1280px;margin:0 auto;align-items:start}
+  .views{display:flex;flex-direction:column;gap:16px;min-width:0}
+  .side{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow:auto}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .panel h2{font-size:14px;margin:0 0 12px;color:var(--primary)}
+  .card{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px}
+  .card .t{font-weight:700;font-size:14px}
+  .m{color:var(--muted);font-size:12px;margin-top:4px}
+  button.btn{background:var(--primary);color:#fff;border:0;padding:7px 12px;border-radius:8px;cursor:pointer;font-size:13px;margin-right:6px;margin-top:6px}
+  button.btn.ghost{background:var(--chip);color:var(--primary)}
+  button.btn.warn{background:var(--warn)}
+  button.btn:disabled{opacity:.45;cursor:not-allowed}
+  select,input{padding:6px;border-radius:8px;border:1px solid var(--line);font-size:13px}
+  .chip{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:var(--chip);color:var(--primary);margin-left:6px}
+  .chip.ok{background:#e6f6ee;color:var(--ok)} .chip.err{background:#fdecea;color:var(--err)} .chip.warn{background:#fdf1e3;color:var(--warn)}
+  .log{font-family:Consolas,monospace;font-size:12px;line-height:1.7;max-height:520px;overflow:auto;background:#0f172a;color:#cfe3ff;border-radius:10px;padding:12px;white-space:pre-wrap}
+  table{width:100%;border-collapse:collapse;font-size:13px} th,td{border-bottom:1px solid var(--line);padding:6px;text-align:left}
+  th{color:var(--muted);font-weight:600}
+  .hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+  <h1>健身房运营管理系统 · 后端管理页</h1>
+  <span class="tag">Spring Boot · H2 · S1 约课 + S2 收费</span>
+  <div class="sw">
+    <button id="swB" class="active" onclick="switchView('booking')">约课管理</button>
+    <button id="swP" onclick="switchView('pay')">收费与对账</button>
+  </div>
+</header>
+
+<main>
+  <div class="views">
+    <!-- ============ 约课管理 ============ -->
+    <section id="viewBooking" class="panel">
+      <h2>会员（GET /api/members）</h2>
+      <div id="memberBox" class="m">加载中…</div>
+      <h2 style="margin-top:16px">课程与余位（GET /api/courses）</h2>
+      <div id="courseBox" class="m">加载中…</div>
+    </section>
+
+    <!-- ============ 收费与对账 ============ -->
+    <section id="viewPay" class="panel hidden">
+      <h2>S2 · 收费与对账</h2>
+      <div class="card">
+        <div class="t">创建订单</div>
+        <div class="m">会员 / 业务类型 / 金额（元）/ 课包次数</div>
+        <div style="margin-top:8px">
+          <select id="orderMember"></select>
+          <select id="orderBiz">
+            <option value="membership">会籍（年卡）</option>
+            <option value="pt_package">私教课包</option>
+          </select>
+          <input id="orderAmount" type="number" value="3000" style="width:100px">
+          <input id="orderTimes" type="number" value="10" style="width:80px" placeholder="课包次数">
+          <button class="btn" onclick="createOrder()">创建订单</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="t">订单列表</div>
+        <div class="m">
+          <button class="btn ghost" onclick="loadOrders('')">全部</button>
+          <button class="btn ghost" onclick="loadOrders('pending')">待支付</button>
+          <button class="btn ghost" onclick="loadOrders('paid')">已支付</button>
+          <button class="btn ghost" onclick="loadOrders('abnormal')">异常</button>
+        </div>
+        <div id="orderBox" class="m">未加载</div>
+      </div>
+
+      <div class="card">
+        <div class="t">对账与提醒</div>
+        <div style="margin-top:8px">
+          <button class="btn" onclick="genSettlement()">生成当月对账单</button>
+          <button class="btn ghost" onclick="loadSettlements()">查看对账单</button>
+          <button class="btn ghost" onclick="renewRemind()">执行到期提醒（SYS-R6）</button>
+        </div>
+        <div id="settleBox" class="m">未加载</div>
+      </div>
+    </section>
+  </div>
+
+  <aside class="panel side">
+    <h2>接口调用日志（真实请求）<span class="chip" id="logCount">0 条</span></h2>
+    <div style="margin-bottom:8px">
+      <button class="btn ghost" onclick="document.getElementById('log').textContent='';logCount()">清空日志</button>
+    </div>
+    <div class="log" id="log"></div>
+  </aside>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+function log(msg, ok){
+  const box = $('log');
+  box.textContent += `[${new Date().toLocaleTimeString('zh-CN',{hour12:false})}] ${ok===false?'✗ ':ok===true?'✓ ':''}${msg}\n`;
+  box.scrollTop = box.scrollHeight; logCount();
+}
+function logCount(){
+  const n = $('log').textContent.split('\n').filter(x=>x.trim()).length;
+  $('logCount').textContent = n + ' 条';
+}
+async function api(method, url, body){
+  const opt = { method, headers:{'Content-Type':'application/json'} };
+  if (body) opt.body = JSON.stringify(body);
+  const res = await fetch(url, opt);
+  const data = await res.json().catch(()=>null);
+  log(`${method} ${url} → ${res.status} ${JSON.stringify(data).slice(0,150)}`, res.ok);
+  return { status: res.status, data };
+}
+
+let members = [], courses = [];
+async function boot(){
+  const m = await api('GET','/api/members');
+  members = Array.isArray(m.data) ? m.data : [];
+  $('memberBox').innerHTML = members.length ? members.map(x =>
+    `<div>${x.name} <span class="chip ${x.status==='active'?'ok':'err'}">${x.status}</span>
+      <button class="btn ghost" onclick="quickBook(${x.id})">约课</button></div>`).join('') : '无会员';
+  $('orderMember').innerHTML = members.map(x=>`<option value="${x.id}">${x.name}</option>`).join('');
+
+  await loadCourses();
+  await loadOrders('');
+  await loadSettlements();
+}
+async function loadCourses(){
+  const c = await api('GET','/api/courses');
+  courses = Array.isArray(c.data) ? c.data : [];
+  $('courseBox').innerHTML = courses.map(x =>
+    `<div class="card"><div class="t">${x.name} · ${(x.startTime||'').slice(11,16)}</div>
+      <div class="m">容量 ${x.capacity}｜已约 ${x.bookedCount}｜剩余 ${x.remaining} <span class="chip ${x.remaining>0?'ok':'err'}">${x.status}</span></div>
+      <div>${members.map(mm=>`<button class="btn ghost" onclick="book(${mm.id},${x.id})">${mm.name} 约课</button>`).join('')}</div>
+    </div>`).join('');
+}
+function quickBook(memberId){
+  if (!courses.length) return alert('暂无课程');
+  book(memberId, courses[0].id);
+}
+async function book(memberId, courseId){
+  const r = await api('POST','/api/bookings',{memberId, courseId});
+  if (r.status !== 200){ alert(`[${(r.data&&r.data.ruleCode)||''}] ${(r.data&&r.data.reason)||'约课失败'}`); }
+  else { alert('约课成功，预约号 ' + r.data.bookingId); }
+  await loadCourses();
+}
+function switchView(v){
+  $('viewBooking').classList.toggle('hidden', v!=='booking');
+  $('viewPay').classList.toggle('hidden', v!=='pay');
+  $('swB').classList.toggle('active', v==='booking');
+  $('swP').classList.toggle('active', v==='pay');
+}
+
+/* ---------------- S2 收费 ---------------- */
+async function createOrder(){
+  const body = {
+    memberId: Number($('orderMember').value),
+    bizType: $('orderBiz').value,
+    amount: Number($('orderAmount').value),
+    times: Number($('orderTimes').value) || 0
+  };
+  const r = await api('POST','/api/orders', body);
+  if (r.status === 200) alert('订单已创建：' + r.data.orderNo);
+  await loadOrders('');
+}
+async function loadOrders(status){
+  const r = await api('GET','/api/orders' + (status?('?status='+status):''));
+  const list = Array.isArray(r.data) ? r.data : [];
+  $('orderBox').innerHTML = list.length === 0 ? '暂无订单' : `<table>
+    <tr><th>订单号</th><th>会员</th><th>业务</th><th>金额</th><th>状态</th><th>操作</th></tr>
+    ${list.map(o=>`<tr>
+      <td>${o.orderNo}</td><td>${o.memberId}</td><td>${o.bizType}</td>
+      <td>¥${o.amount}</td>
+      <td><span class="chip ${o.status==='paid'?'ok':(o.status==='abnormal'?'err':'')}">${o.status}</span></td>
+      <td>
+        <button class="btn ghost" onclick="payOrder('${o.orderNo}')">支付</button>
+        <button class="btn ghost" onclick="notifyOrder('${o.orderNo}', ${o.amount})">正常回调</button>
+        <button class="btn warn" onclick="notifyOrder('${o.orderNo}', 1)">金额不符回调</button>
+      </td></tr>`).join('')}
+  </table>`;
+}
+async function payOrder(orderNo){
+  const r = await api('POST',`/api/orders/${orderNo}/pay`);
+  alert(r.status===200 ? '支付成功并已激活会籍' : '支付失败');
+  await loadOrders('');
+}
+async function notifyOrder(orderNo, paidAmount){
+  const r = await api('POST',`/api/pay/notify/${orderNo}`,{paidAmount, outTradeNo:'WX-'+Date.now()});
+  alert(r.status===200 ? '回调受理成功（幂等）' : `回调异常：${(r.data&&r.data.abnormalReason)||''}`);
+  await loadOrders('');
+}
+async function genSettlement(){
+  const r = await api('POST','/api/settlements');
+  if (r.status===200) alert(`对账单已生成：${r.data.period}，实收 ¥${r.data.totalAmount}，异常 ${r.data.abnormalCount} 笔`);
+  await loadSettlements();
+}
+async function loadSettlements(){
+  const r = await api('GET','/api/settlements');
+  const list = Array.isArray(r.data) ? r.data : [];
+  $('settleBox').innerHTML = list.length===0 ? '暂无对账单' : list.map(s =>
+    `<div>${s.period}｜实收 ¥${s.totalAmount}｜订单 ${s.orderCount} 笔｜异常 ${s.abnormalCount} 笔 <span class="chip">${s.status}</span></div>`).join('');
+}
+async function renewRemind(){
+  const r = await api('POST','/api/jobs/renew-remind?days=7');
+  if (r.status===200) alert(`需提醒会员 ${r.data.count} 人：${(r.data.members||[]).join('、') || '无'}`);
+}
+boot();
+</script>
+</body>
+</html>

@@ -20,11 +20,11 @@ INSERT INTO member (id, member_no, name, phone, status, risk_level, created_at) 
  (2, 'M002', '李四', '139****0002', 'expired', NULL, CURRENT_TIMESTAMP),
  (3, 'M003', '王五', '137****0003', 'active',  NULL, CURRENT_TIMESTAMP);
 
--- 会籍 / 课包（张三有 1 次私教课包，用于验证 SYS-R5 核销）
+-- 会籍 / 课包（张三有 1 次私教课包，用于验证 SYS-R5 核销；王五 5 天后到期，用于验证 SYS-R6 提醒）
 INSERT INTO membership (id, member_id, type, start_date, end_date, status, remaining_times) VALUES
- (1, 1, 'year',       CURRENT_DATE, DATEADD('YEAR', 1, CURRENT_DATE), 'active', NULL),
+ (1, 1, 'year',       CURRENT_DATE, DATEADD('YEAR', 1, CURRENT_DATE),  'active', NULL),
  (2, 1, 'pt_package', CURRENT_DATE, DATEADD('MONTH', 3, CURRENT_DATE), 'active', 1),
- (3, 3, 'year',       CURRENT_DATE, DATEADD('YEAR', 1, CURRENT_DATE), 'active', NULL);
+ (3, 3, 'year',       DATEADD('YEAR', -1, CURRENT_DATE), DATEADD('DAY', 5, CURRENT_DATE), 'active', NULL);
 
 -- 课程（12 号瑜伽已满员，用于验证 SYS-R3 容量校验）
 INSERT INTO course (id, code, name, type, coach_id, room, start_time, end_time, capacity, booked_count, status) VALUES

@@ -41,6 +41,9 @@ public class MembershipEntity {
     }
 
     public Long getId() { return id; }
+    public Long getMemberId() { return memberId; }
+    public java.time.LocalDate getEndDate() { return endDate; }
+    public String getStatus() { return status; }
     public Integer getRemainingTimes() { return remainingTimes; }
     public void setRemainingTimes(Integer t) { this.remainingTimes = t; }
 }

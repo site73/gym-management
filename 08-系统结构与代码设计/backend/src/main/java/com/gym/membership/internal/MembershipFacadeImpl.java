@@ -1,9 +1,14 @@
 package com.gym.membership.internal;
 
+import com.gym.membership.api.MemberView;
 import com.gym.membership.api.MembershipFacade;
 import com.gym.shared.audit.AuditLogger;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * 会籍契约实现 —— 本模块内部逻辑，其他模块不可依赖本类。
@@ -82,5 +87,27 @@ public class MembershipFacadeImpl implements MembershipFacade {
             membershipRepository.save(membership);
         }
         auditLogger.log("membership.activate", "member", memberId, bizType);
+    }
+
+    @Override
+    public List<MemberView> listMembers() {
+        return memberRepository.findAll().stream()
+                .map(m -> new MemberView(m.getId(), null, m.getName(), null, m.getStatus(), m.getRiskLevel()))
+                .toList();
+    }
+
+    /** SYS-R6：扫描 D 天内到期的有效会籍，返回需提醒的会员 */
+    @Override
+    public List<String> remindExpiring(int daysBefore) {
+        LocalDate today = LocalDate.now();
+        var expiring = membershipRepository.findByStatusAndEndDateBetween(
+                "active", today, today.plusDays(daysBefore));
+        List<String> names = new ArrayList<>();
+        for (var ms : expiring) {
+            memberRepository.findById(ms.getMemberId()).ifPresent(m -> names.add(m.getName()));
+        }
+        auditLogger.log("job.renewRemind", "membership", null,
+                "days=" + daysBefore + ", count=" + names.size());
+        return names;
     }
 }

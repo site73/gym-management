@@ -27,4 +27,15 @@ public interface MembershipFacade {
 
     /** 支付成功后延长会籍/增加课包（由支付事件驱动） */
     void activateMembership(Long memberId, String bizType, int packageTimes);
+
+    /** 会员列表（后台管理页用） */
+    java.util.List<MemberView> listMembers();
+
+    /**
+     * 会籍到期提醒扫描（SYS-R6，D=7）。
+     *
+     * @param daysBefore 提前天数
+     * @return 需要提醒的会员姓名列表
+     */
+    java.util.List<String> remindExpiring(int daysBefore);
 }
