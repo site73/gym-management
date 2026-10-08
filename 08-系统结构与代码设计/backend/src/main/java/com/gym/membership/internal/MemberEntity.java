@@ -32,6 +32,10 @@ public class MemberEntity {
     @Column(name = "penalty_until")
     private LocalDateTime penaltyUntil;
 
+    /** 关联的登录账号（新会员注册时写入；门店代建会员时可为空） */
+    @Column(name = "user_id")
+    private Long userId;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -58,4 +62,8 @@ public class MemberEntity {
     public String getMemberNo() { return memberNo; }
     public String getPhone() { return phone; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
+    public void setName(String name) { this.name = name; }
+    public void setPhone(String phone) { this.phone = phone; }
 }

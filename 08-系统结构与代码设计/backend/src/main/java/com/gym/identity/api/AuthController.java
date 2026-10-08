@@ -19,7 +19,21 @@ public class AuthController {
 
     public record LoginRequest(String username, String password) {}
 
+    /** 会员自助注册入参 */
+    public record RegisterRequest(String username, String password, String name, String phone) {}
+
     public record LoginResponse(String token, LocalDateTime expiresAt, AuthSession.UserInfo user) {}
+
+    /**
+     * 会员自助注册（无需令牌）：注册成功即登录，直接进入会员端。
+     *
+     * <p>一次事务内创建登录账号与会员档案，并绑定 {@code member.user_id}。
+     */
+    @PostMapping("/register")
+    public LoginResponse register(@RequestBody RegisterRequest req) {
+        AuthSession s = authFacade.register(req.username(), req.password(), req.name(), req.phone());
+        return new LoginResponse(s.token(), s.expiresAt(), s.toUserInfo());
+    }
 
     /** 登录（无需令牌） */
     @PostMapping("/login")

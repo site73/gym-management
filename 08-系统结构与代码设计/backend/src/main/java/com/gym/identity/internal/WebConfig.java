@@ -21,7 +21,7 @@ public class WebConfig implements WebMvcConfigurer {
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/api/**")
-                // 登录接口无需令牌；支付回调由支付平台直接调用（真实环境以验签保护），也不携带前端令牌
-                .excludePathPatterns("/api/auth/login", "/api/pay/notify/**");
+                // 登录 / 注册无需令牌；支付回调由支付平台直接调用（真实环境以验签保护），也不携带前端令牌
+                .excludePathPatterns("/api/auth/login", "/api/auth/register", "/api/pay/notify/**");
     }
 }

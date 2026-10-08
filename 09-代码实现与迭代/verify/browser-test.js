@@ -169,9 +169,9 @@ async function waitFor(fn, timeout = 15000) {
     check(C, '门店后台显示接口调用日志', '可见', await page.isVisible('#logPanel') ? '可见' : '隐藏',
           await page.isVisible('#logPanel'));
 
-    const memberRows = await waitFor(async () => (await page.locator('#memberBox div').count()) >= 4)
-      .then(() => page.locator('#memberBox div').count());
-    check(C, '会员列表渲染', '4 位会员', `${memberRows} 行`, memberRows === 4);
+    await waitFor(async () => (await page.locator('#memberBox .member-pick').count()) >= 4);
+    const memberRows = await page.locator('#memberBox .member-pick').count();
+    check(C, '会员列表渲染', '≥4 位会员（注册用例会新增）', `${memberRows} 张会员卡`, memberRows >= 4);
 
     await waitFor(async () => (await page.locator('#bookingBox tr').count()) >= 2);
     const bookingRows = await page.locator('#bookingBox tr').count();
@@ -252,6 +252,62 @@ async function waitFor(fn, timeout = 15000) {
   const saved = await waitForText(page, '#adminCourseBox', '答辩演示版');
   check(E, '点击「保存课程」有响应', '列表出现修改后的名称',
         saved ? '已保存并刷新' : '未更新', saved);
+
+  /* ---------- F 注册新会员 ---------- */
+  const F2 = 'F 注册与联动';
+  await page.click('header .user button');
+  await page.waitForSelector('#loginBtn:visible', { timeout: 8000 });
+  await page.click('#toRegister');
+  await sleep(300);
+  const regVisible = await page.isVisible('#regBtn');
+  check(F2, '点击「注册新会员」切换到注册表单', '注册按钮可见', regVisible ? '已显示' : '未显示', regVisible);
+
+  const uniq = 'w' + String(Date.now()).slice(-6);
+  await page.fill('#regUser', uniq);
+  await page.fill('#regPass', 'pass123456');
+  await page.fill('#regName', '浏览器注册会员');
+  await page.fill('#regPhone', '13800002222');
+  await page.click('#regBtn');
+  const enteredMember = await waitFor(async () => await page.isVisible('#viewMember'));
+  check(F2, '注册成功并自动进入会员端', '会员端可见',
+        `角色=${await page.textContent('#roleTag')}`, enteredMember);
+
+  const regInfoText = await page.textContent('#memberInfo');
+  check(F2, '新会员档案已生成', '含会员编号与会籍状态',
+        regInfoText.replace(/\s+/g, ' ').slice(0, 46), regInfoText.includes('会籍状态'));
+
+  /* ---------- G 店长后台：会员 ↔ 课程余位联动 ---------- */
+  await page.click('header .user button');
+  await page.waitForSelector('#loginBtn:visible', { timeout: 8000 });
+  await page.fill('#loginUser', 'manager');
+  await page.fill('#loginPass', '123456');
+  await page.click('#loginBtn');
+  await page.waitForSelector('#staffTabs:not(.hidden)', { timeout: 10000 });
+  await page.click('#tabBooking');
+  await waitForText(page, '#memberBox', '张三');
+
+  const hintBefore = await page.textContent('#selectedHint');
+  check(F2, '未选会员时提示先选择', '提示含"未选择会员"',
+        hintBefore.slice(0, 30), hintBefore.includes('未选择会员'));
+
+  const noPickBtn = await page.locator('#courseBox button:has-text("为 ")').count();
+  check(F2, '未选会员时不显示代客约课按钮', '0 个', `${noPickBtn} 个`, noPickBtn === 0);
+
+  await page.locator('#memberBox .member-pick').first().click();
+  const hintAfter = await waitForText(page, '#selectedHint', '已选中');
+  check(F2, '点击会员后被选中', '提示含"已选中"',
+        (await page.textContent('#selectedHint')).slice(0, 34), hintAfter);
+
+  const pickBtns = await page.locator('#courseBox button:has-text("为 ")').count();
+  check(F2, '课程卡出现「为 TA 约课」按钮', '≥1 个', `${pickBtns} 个`, pickBtns >= 1);
+
+  const rosterBefore = await page.locator('#courseBox .roster').first().textContent();
+  await page.locator('#courseBox button:has-text("为 ")').first().click();
+  await sleep(1500);
+  const rosterAfter = await page.locator('#courseBox .roster').first().textContent();
+  check(F2, '代客约课后已报名名单联动更新', '名单人数增加',
+        `${rosterBefore.trim().slice(0, 22)} → ${rosterAfter.trim().slice(0, 22)}`,
+        rosterBefore !== rosterAfter);
 
   /* ---------- F 运行时健康 ---------- */
   const F = 'F 运行时健康';

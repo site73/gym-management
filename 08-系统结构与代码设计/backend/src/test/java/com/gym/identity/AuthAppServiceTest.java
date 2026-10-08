@@ -7,6 +7,8 @@ import com.gym.identity.application.AuthAppService;
 import com.gym.identity.internal.SysUserEntity;
 import com.gym.identity.internal.SysUserRepository;
 import com.gym.identity.internal.TokenStore;
+import com.gym.membership.api.MemberView;
+import com.gym.membership.api.MembershipFacade;
 import com.gym.shared.audit.AuditLogger;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +19,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 /**
@@ -29,8 +33,9 @@ class AuthAppServiceTest {
 
     private final SysUserRepository repo = mock(SysUserRepository.class);
     private final AuditLogger audit = mock(AuditLogger.class);
+    private final MembershipFacade membership = mock(MembershipFacade.class);
     private final TokenStore tokenStore = new TokenStore();
-    private final AuthFacade auth = new AuthAppService(repo, tokenStore, audit);
+    private final AuthFacade auth = new AuthAppService(repo, tokenStore, audit, membership);
     private final BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
 
     private SysUserEntity stub(String username, String rawPassword, String status, List<String> roles) {
@@ -104,6 +109,54 @@ class AuthAppServiceTest {
         assertThatThrownBy(() -> auth.login("member1", "123456"))
                 .isInstanceOf(AuthException.class)
                 .hasMessageContaining("禁用");
+    }
+
+    /* ==================== 会员自助注册 ==================== */
+
+    @Test
+    @DisplayName("会员注册成功：创建账号 + 会员档案 + 绑定，并直接返回可用的登录态")
+    void register_ok() {
+        var user = new SysUserEntity("newbie", encoder.encode("123456"), "新会员");
+        when(repo.findByUsername("newbie")).thenReturn(Optional.empty());
+        when(repo.save(any(SysUserEntity.class))).thenReturn(user);
+        when(membership.registerMember(eq("新会员"), eq("13900000000"), any()))
+                .thenReturn(new MemberView(9L, "M009", "新会员", "13900000000", "potential",
+                        null, 0, 0, java.time.LocalDateTime.now()));
+
+        AuthSession s = auth.register("newbie", "123456", "新会员", "13900000000");
+
+        assertThat(s.role()).isEqualTo("MEMBER");
+        assertThat(s.memberId()).isEqualTo(9L);
+        assertThat(s.token()).isNotBlank();
+        assertThat(auth.resolve(s.token()).username()).isEqualTo("newbie");
+        verify(repo).bindRole(any(), eq("member"));
+        verify(membership).registerMember(eq("新会员"), eq("13900000000"), any());
+    }
+
+    @Test
+    @DisplayName("注册：用户名已被占用 → 拒绝")
+    void register_duplicate_username() {
+        when(repo.findByUsername("newbie"))
+                .thenReturn(Optional.of(new SysUserEntity("newbie", "x", "已有")));
+
+        assertThatThrownBy(() -> auth.register("newbie", "123456", "新会员", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("已被占用");
+        verify(membership, never()).registerMember(any(), any(), any());
+    }
+
+    @Test
+    @DisplayName("注册：密码过短 / 用户名为空 / 姓名为空 → 拒绝")
+    void register_invalid_input() {
+        assertThatThrownBy(() -> auth.register("newbie", "123", "新会员", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("密码至少");
+        assertThatThrownBy(() -> auth.register("  ", "123456", "新会员", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("用户名不能为空");
+        assertThatThrownBy(() -> auth.register("newbie", "123456", "  ", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("姓名不能为空");
     }
 
     @Test

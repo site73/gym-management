@@ -52,6 +52,15 @@ public interface MembershipFacade {
     /** 预约限制剩余天数；0 表示未被限制 */
     int penaltyDaysRemaining(Long memberId);
 
+    /**
+     * 注册新会员档案（会员编号自动生成 M001、M002 …）。
+     *
+     * @param name   会员姓名（必填）
+     * @param phone  手机号（可空）
+     * @param userId 关联的登录账号 ID（会员自助注册时写入；门店代建可传 null）
+     */
+    MemberView registerMember(String name, String phone, Long userId);
+
     /** 会员是否存在 */
     boolean exists(Long memberId);
 }

@@ -26,6 +26,12 @@
   .accounts table{width:100%;border-collapse:collapse;font-size:12px}
   .accounts td{padding:3px 4px;border-bottom:1px dashed #eef1f6}
   .accounts button{margin:0;padding:2px 8px;font-size:11px;width:auto;background:var(--chip);color:var(--primary)}
+  .switch-line{margin-top:12px;font-size:12px;color:var(--muted);text-align:center}
+  .switch-line a{color:var(--primary);cursor:pointer}
+  .member-pick{display:inline-block;padding:8px 12px;border:1px solid var(--line);border-radius:8px;margin:0 8px 8px 0;cursor:pointer;background:var(--card)}
+  .member-pick:hover{border-color:var(--primary)}
+  .member-pick.active{border-color:var(--primary);background:var(--chip);font-weight:700}
+  .roster{font-size:12px;color:var(--muted);margin-top:4px}
 
   /* ---------- 主界面 ---------- */
   header{background:linear-gradient(90deg,#2f5597,#4a7ac7);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
@@ -69,11 +75,28 @@
   <div class="login-box">
     <h1>健身房运营管理系统</h1>
     <div class="sub">登录后将按账号角色进入对应页面</div>
-    <label for="loginUser">用户名</label>
-    <input id="loginUser" autocomplete="username" placeholder="如 member1 / manager">
-    <label for="loginPass">密码</label>
-    <input id="loginPass" type="password" autocomplete="current-password" placeholder="默认 123456">
-    <button id="loginBtn" onclick="doLogin()">登 录</button>
+    <div id="loginFormBlock">
+      <label for="loginUser">用户名</label>
+      <input id="loginUser" autocomplete="username" placeholder="如 member1 / manager">
+      <label for="loginPass">密码</label>
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="默认 123456">
+      <button id="loginBtn" onclick="doLogin()">登 录</button>
+      <div class="switch-line">还没有账号？<a id="toRegister" onclick="showRegisterForm()">注册新会员</a></div>
+    </div>
+
+    <div id="registerFormBlock" class="hidden">
+      <label for="regUser">用户名（登录名）</label>
+      <input id="regUser" autocomplete="username" placeholder="自定义，需唯一">
+      <label for="regPass">密码（至少 6 位）</label>
+      <input id="regPass" type="password" autocomplete="new-password" placeholder="至少 6 位">
+      <label for="regName">姓名</label>
+      <input id="regName" placeholder="填写真实姓名">
+      <label for="regPhone">手机号（可选）</label>
+      <input id="regPhone" placeholder="用于门店联系">
+      <button id="regBtn" onclick="doRegister()">注册并进入会员端</button>
+      <div class="switch-line">已有账号？<a id="toLogin" onclick="showLoginForm()">返回登录</a></div>
+    </div>
+
     <div id="loginMsg"></div>
     <div class="accounts">
       <div style="margin-bottom:6px">演示账号（点击可自动填充，密码均为 <b>123456</b>）：</div>
@@ -125,11 +148,15 @@
 
       <!-- ---------- 门店后台：约课管理 ---------- -->
       <section id="viewBooking" class="panel hidden">
-        <h2>会员</h2>
+        <h2>会员（点击选中，用于代客约课）</h2>
+        <div class="m"><button class="btn ghost" onclick="loadMembers()">刷新</button></div>
         <div id="memberBox" class="m">加载中…</div>
+
         <h2 style="margin-top:16px">课程与余位</h2>
+        <div class="m" id="selectedHint">未选择会员：点击上方会员卡片后，可为该会员代客约课。</div>
         <div class="m"><button class="btn ghost" onclick="loadCourses()">刷新</button></div>
         <div id="courseBox" class="m">加载中…</div>
+
         <h2 style="margin-top:16px">预约列表</h2>
         <div class="m"><button class="btn ghost" onclick="loadBookings()">刷新</button></div>
         <div id="bookingBox" class="m">加载中…</div>
@@ -265,7 +292,9 @@
 
 <script>
 const $ = id => document.getElementById(id);
-const state = { token: null, user: null, members: [], courses: [] };
+const state = { token: null, user: null, members: [], courses: [], bookings: [] };
+// 门店后台当前选中的会员（用于代客约课，实现「会员 ↔ 课程余位」联动）
+let pickedMemberId = null;
 const STATUS_CN = { booked: '已约', checked_in: '已签到', no_show: '爽约', cancelled: '已取消' };
 
 /* ================= 基础 ================= */
@@ -333,11 +362,63 @@ async function doLogout() {
   showLogin('已退出登录');
 }
 
+/* ---------- 注册新会员（自助注册，注册成功即登录） ---------- */
+function showRegisterForm() {
+  $('loginFormBlock').classList.add('hidden');
+  $('registerFormBlock').classList.remove('hidden');
+  $('loginMsg').textContent = '';
+  $('regUser').focus();
+}
+
+function showLoginForm() {
+  $('registerFormBlock').classList.add('hidden');
+  $('loginFormBlock').classList.remove('hidden');
+  $('loginMsg').textContent = '';
+  $('loginUser').focus();
+}
+
+async function doRegister() {
+  const username = $('regUser').value.trim();
+  const password = $('regPass').value;
+  const name = $('regName').value.trim();
+  const phone = $('regPhone').value.trim();
+  $('loginMsg').textContent = '';
+
+  if (!username || !password || !name) {
+    $('loginMsg').textContent = '请填写用户名、密码与姓名';
+    return;
+  }
+  if (password.length < 6) {
+    $('loginMsg').textContent = '密码至少 6 位';
+    return;
+  }
+
+  const res = await fetch('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: username, password: password, name: name, phone: phone })
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok) {
+    $('loginMsg').textContent = (data && data.reason) || '注册失败';
+    return;
+  }
+
+  state.token = data.token;
+  state.user = data.user;
+  localStorage.setItem('gymToken', data.token);
+  localStorage.setItem('gymUser', JSON.stringify(data.user));
+  log('注册成功：' + (data.user && data.user.displayName), true);
+  await enterApp();
+  alert('注册成功，已进入会员端。会员编号可在「我的信息」中查看。');
+}
+
 function showLogin(msg) {
   $('appView').classList.add('hidden');
   $('loginView').classList.remove('hidden');
   $('loginMsg').textContent = msg || '';
   $('loginPass').value = '';
+  showLoginForm();
 }
 
 /** 按角色进入对应页面 */
@@ -462,24 +543,73 @@ async function myCancel(id) {
 async function loadMembers() {
   const r = await api('GET', '/api/members');
   state.members = Array.isArray(r.data) ? r.data : [];
-  const cn = { active: '有效', expired: '过期', frozen: '冻结' };
-  $('memberBox').innerHTML = state.members.length === 0 ? '暂无会员' : state.members.map(m =>
-    `<div>${m.name} <span class="chip ${m.status === 'active' ? 'ok' : 'err'}">${cn[m.status] || m.status}</span>
-      <span class="m">课包 ${m.packageRemaining ?? 0} 次${m.penaltyDaysRemaining > 0 ? '｜限制 ' + m.penaltyDaysRemaining + ' 天' : ''}</span></div>`).join('');
+  const cn = { active: '有效', expired: '过期', frozen: '冻结', potential: '潜在' };
+  $('memberBox').innerHTML = state.members.length === 0 ? '暂无会员' : state.members.map(m => {
+    const on = String(pickedMemberId) === String(m.id);
+    const booked = (state.bookings || []).filter(b => String(b.memberId) === String(m.id) && b.status === 'booked').length;
+    return `<span class="member-pick ${on ? 'active' : ''}" onclick="pickMember('${m.id}')">
+      ${m.name}
+      <span class="chip ${m.status === 'active' ? 'ok' : m.status === 'potential' ? 'warn' : 'err'}">${cn[m.status] || m.status}</span>
+      <span class="m">${m.memberNo || ''}｜课包 ${m.packageRemaining ?? 0} 次｜已约 ${booked} 门${m.penaltyDaysRemaining > 0 ? '｜限制 ' + m.penaltyDaysRemaining + ' 天' : ''}</span>
+    </span>`;
+  }).join('');
   $('orderMember').innerHTML = state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  renderPickedHint();
 }
+
+/** 选中 / 取消选中会员：课程卡片上的「为 TA 约课」随之联动 */
+function pickMember(id) {
+  pickedMemberId = (String(pickedMemberId) === String(id)) ? null : id;
+  loadMembers();
+  renderCourses();
+}
+
+function renderPickedHint() {
+  const el = $('selectedHint');
+  if (!el) return;
+  if (!pickedMemberId) {
+    el.textContent = '未选择会员：点击上方会员卡片后，可为该会员代客约课。';
+    return;
+  }
+  const m = state.members.find(x => String(x.id) === String(pickedMemberId));
+  el.textContent = m
+      ? '已选中：' + m.name + '（' + (m.memberNo || '') + '）—— 在下方课程卡片点「为 TA 约课」即可代客预约'
+      : '';
+}
+
 async function loadCourses() {
   const r = await api('GET', '/api/courses');
   state.courses = Array.isArray(r.data) ? r.data : [];
+  renderCourses();
+  fillPredictCourses();
+}
+
+/** 渲染课程与余位：余位来自课程，已报名名单来自预约数据（会员 ↔ 课程联动） */
+function renderCourses() {
   if (state.courses.length === 0) { $('courseBox').innerHTML = '暂无课程'; return; }
-  $('courseBox').innerHTML = state.courses.map(c => `
-    <div class="card">
-      <div class="t">${c.name} · ${(c.startTime || '').slice(11, 16)}</div>
+  const roster = {};
+  (state.bookings || []).forEach(b => {
+    if (b.status !== 'booked') return;
+    (roster[b.courseId] = roster[b.courseId] || []).push(b.memberId);
+  });
+  const nameOf = {};
+  state.members.forEach(m => { nameOf[m.id] = m.name; });
+  const picked = pickedMemberId
+      ? state.members.find(x => String(x.id) === String(pickedMemberId)) : null;
+
+  $('courseBox').innerHTML = state.courses.map(c => {
+    const ids = roster[c.id] || [];
+    const names = ids.map(i => nameOf[i] || ('#' + i)).join('、');
+    return `<div class="card">
+      <div class="t">${c.name} · ${String(c.startTime || '').slice(11, 16)}</div>
       <div class="m">容量 ${c.capacity}｜已约 ${c.bookedCount}｜剩余 ${c.remaining}
         <span class="chip ${c.remaining > 0 ? 'ok' : 'err'}">${c.status}</span></div>
-      <div>${state.members.map(m => `<button class="btn ghost" onclick="staffBook('${m.id}','${c.id}')">${m.name} 约课</button>`).join('')}</div>
-    </div>`).join('');
-  fillPredictCourses();
+      <div class="roster">已报名（${ids.length}）：${names || '暂无'}</div>
+      <div>${picked
+        ? `<button class="btn" ${c.remaining > 0 ? '' : 'disabled'} onclick="staffBook('${picked.id}','${c.id}')">为 ${picked.name} 约课</button>`
+        : '<span class="m">请先在上方选择会员</span>'}</div>
+    </div>`;
+  }).join('');
 }
 function fillPredictCourses() {
   const sel = $('predictCourse');
@@ -488,29 +618,42 @@ function fillPredictCourses() {
 }
 async function staffBook(memberId, courseId) {
   const r = await api('POST', '/api/bookings', { memberId: Number(memberId), courseId: Number(courseId) });
-  if (r.status !== 200) alert((r.data && r.data.ruleCode ? '[' + r.data.ruleCode + '] ' : '') + ((r.data && r.data.reason) || '约课失败'));
-  else alert('约课成功，预约号 ' + r.data.bookingId);
-  await loadBookings(); await loadCourses();
+  if (r.status !== 200) {
+    alert((r.data && r.data.ruleCode ? '[' + r.data.ruleCode + '] ' : '') + ((r.data && r.data.reason) || '约课失败'));
+  } else {
+    alert('代客约课成功，预约号 ' + r.data.bookingId);
+  }
+  // 联动刷新：预约列表 → 课程余位与已报名名单 → 会员卡的已约门数
+  await loadBookings();
+  await loadCourses();
+  await loadMembers();
 }
 async function loadBookings() {
   const r = await api('GET', '/api/bookings');
   const list = Array.isArray(r.data) ? r.data : [];
-  if (list.length === 0) { $('bookingBox').innerHTML = '暂无预约'; return; }
+  state.bookings = list;                    // 供课程卡展示「已报名名单」与会员卡统计
   const nameOf = {}; state.members.forEach(m => { nameOf[m.id] = m.name; });
   const courseOf = {}; state.courses.forEach(c => { courseOf[c.id] = c.name; });
-  $('bookingBox').innerHTML = `<table>
-    <tr><th>预约号</th><th>会员</th><th>课程</th><th>状态</th><th>操作</th></tr>
-    ${list.slice().reverse().map(b => {
-      const can = b.status === 'booked';
-      return `<tr>
-        <td>${b.id}</td><td>${nameOf[b.memberId] || ('#' + b.memberId)}</td><td>${courseOf[b.courseId] || ('#' + b.courseId)}</td>
-        <td><span class="chip ${b.status === 'checked_in' ? 'ok' : (b.status === 'no_show' || b.status === 'cancelled') ? 'err' : ''}">${STATUS_CN[b.status] || b.status}</span></td>
-        <td>
-          <button class="btn ghost" ${can ? '' : 'disabled'} onclick="staffCheckin('${b.id}')">签到</button>
-          <button class="btn ghost" ${can ? '' : 'disabled'} onclick="staffCancel('${b.id}')">取消</button>
-          <button class="btn warn" ${can ? '' : 'disabled'} onclick="staffNoShow('${b.id}')">判爽约</button>
-        </td></tr>`; }).join('')}
-  </table>`;
+
+  if (list.length === 0) {
+    $('bookingBox').innerHTML = '暂无预约';
+  } else {
+    $('bookingBox').innerHTML = `<table>
+      <tr><th>预约号</th><th>会员</th><th>课程</th><th>状态</th><th>操作</th></tr>
+      ${list.slice().reverse().map(b => {
+        const can = b.status === 'booked';
+        return `<tr>
+          <td>${b.id}</td><td>${nameOf[b.memberId] || ('#' + b.memberId)}</td><td>${courseOf[b.courseId] || ('#' + b.courseId)}</td>
+          <td><span class="chip ${b.status === 'checked_in' ? 'ok' : (b.status === 'no_show' || b.status === 'cancelled') ? 'err' : ''}">${STATUS_CN[b.status] || b.status}</span></td>
+          <td>
+            <button class="btn ghost" ${can ? '' : 'disabled'} onclick="staffCheckin('${b.id}')">签到</button>
+            <button class="btn ghost" ${can ? '' : 'disabled'} onclick="staffCancel('${b.id}')">取消</button>
+            <button class="btn warn" ${can ? '' : 'disabled'} onclick="staffNoShow('${b.id}')">判爽约</button>
+          </td></tr>`; }).join('')}
+    </table>`;
+  }
+  renderCourses();     // 余位与已报名名单随预约变化联动
+  renderPickedHint();
 }
 async function staffCheckin(id) {
   const r = await api('POST', `/api/bookings/${id}/checkin`, { action: 'front_desk' });

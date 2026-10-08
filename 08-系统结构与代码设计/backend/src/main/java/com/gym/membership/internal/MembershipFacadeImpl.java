@@ -149,4 +149,21 @@ public class MembershipFacadeImpl implements MembershipFacade {
     public boolean exists(Long memberId) {
         return memberId != null && memberRepository.existsById(memberId);
     }
+
+    /** 注册新会员档案：编号自动生成，初始状态为潜在会员（potential） */
+    @Override
+    @Transactional
+    public MemberView registerMember(String name, String phone, Long userId) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("会员姓名不能为空");
+        }
+        String no = String.format("M%03d", memberRepository.maxId() + 1);
+        var entity = new MemberEntity(null, no, name.trim(),
+                (phone == null || phone.isBlank()) ? null : phone.trim(), "potential");
+        entity.setUserId(userId);
+        var saved = memberRepository.save(entity);
+        auditLogger.log("member.register", "member", saved.getId(),
+                saved.getMemberNo() + " " + saved.getName() + " 绑定账号=" + userId);
+        return toView(saved, 0);
+    }
 }

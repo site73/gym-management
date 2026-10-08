@@ -74,6 +74,43 @@ const login = async (u, p) => call('POST', '/api/auth/login', { username: u, pas
   r = await call('GET', '/api/auth/me', undefined, 'invalid-token');
   check(A, '无效令牌被拒绝', '401', `${r.status}`, r.status === 401);
 
+  /* ---------- A2 会员自助注册 ---------- */
+  const uniq = 'u' + String(Date.now()).slice(-7);
+  const reg = await call('POST', '/api/auth/register', {
+    username: uniq, password: 'pass123456', name: '注册测试会员', phone: '13900001111'
+  });
+  check(A, '会员自助注册', '200 + role=MEMBER + 绑定会员 ID',
+        `${reg.status} role=${reg.data && reg.data.user.role} memberId=${reg.data && reg.data.user.memberId}`,
+        reg.status === 200 && reg.data.user.role === 'MEMBER' && !!reg.data.user.memberId);
+
+  const regToken = reg.data && reg.data.token;
+  const regMe = await call('GET', '/api/auth/me', undefined, regToken);
+  check(A, '注册即登录（令牌可用）', '200', `${regMe.status}`, regMe.status === 200);
+
+  const regDup = await call('POST', '/api/auth/register', {
+    username: uniq, password: 'pass123456', name: '重名会员'
+  });
+  check(A, '用户名重复无法注册', '400 + 含已被占用',
+        `${regDup.status} ${regDup.data && regDup.data.reason}`,
+        regDup.status === 400 && /已被占用/.test(regDup.data.reason || ''));
+
+  const regShort = await call('POST', '/api/auth/register', {
+    username: uniq + 'x', password: '123', name: '短密码'
+  });
+  check(A, '密码过短无法注册', '400 + 含密码至少',
+        `${regShort.status} ${regShort.data && regShort.data.reason}`,
+        regShort.status === 400 && /密码至少/.test(regShort.data.reason || ''));
+
+  const regNoName = await call('POST', '/api/auth/register', {
+    username: uniq + 'y', password: 'pass123456', name: ''
+  });
+  check(A, '姓名为空无法注册', '400', `${regNoName.status}`, regNoName.status === 400);
+
+  const regInfo = await call('GET', `/api/members/${reg.data.user.memberId}`, undefined, regToken);
+  check(A, '新会员可查看本人档案', '200 + 状态为潜在会员',
+        `${regInfo.status} status=${regInfo.data && regInfo.data.status}`,
+        regInfo.status === 200 && regInfo.data.status === 'potential');
+
   /* ==================== B 角色权限 ==================== */
   const B = 'B 角色权限';
   r = await call('GET', '/api/members', undefined, T_M1);
@@ -102,8 +139,9 @@ const login = async (u, p) => call('POST', '/api/auth/login', { username: u, pas
   check(B, '会员查询他人预约被强制为本人', '仅返回本人数据', `${r.status} memberIds=${[...new Set((r.data || []).map(b => b.memberId))]}`,
         r.status === 200 && onlySelf);
   r = await call('GET', '/api/members', undefined, T_MGR);
-  check(B, '店长查看会员列表', '200 且 4 人', `${r.status} ${Array.isArray(r.data) ? r.data.length : 0} 人`,
-        r.status === 200 && r.data.length === 4);
+  check(B, '店长查看会员列表', '200 且 ≥4 人（注册用例会新增会员）',
+        `${r.status} ${Array.isArray(r.data) ? r.data.length : 0} 人`,
+        r.status === 200 && r.data.length >= 4);
 
   /* ==================== C 会员端流程 ==================== */
   const C = 'C 会员端流程';
@@ -211,8 +249,9 @@ const login = async (u, p) => call('POST', '/api/auth/login', { username: u, pas
   check(D, '提成核算（SYS-R10）', '200 + 含比例', `${r.status} rate=${r.data && r.data.rate}`, r.status === 200 && r.data.rate > 0);
 
   r = await call('GET', '/api/reports/summary', undefined, T_MGR);
-  check(D, '经营摘要', '200', `${r.status} 会员 ${r.data && r.data.members} 爽约率 ${r.data && r.data.noShowRate}`,
-        r.status === 200 && r.data.members === 4);
+  check(D, '经营摘要', '200 + 会员数与列表一致',
+        `${r.status} 会员 ${r.data && r.data.members} 爽约率 ${r.data && r.data.noShowRate}`,
+        r.status === 200 && r.data.members >= 4);
 
   r = await call('GET', '/api/audit', undefined, T_MGR);
   check(D, '审计日志', '200 且有记录', `${r.status} ${Array.isArray(r.data) ? r.data.length : 0} 条`,
