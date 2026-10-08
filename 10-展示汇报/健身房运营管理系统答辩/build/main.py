@@ -18,7 +18,7 @@ PX = 914400 / 96.0
 OUT = os.path.join(PROJ, '健身房运营管理系统答辩.pptx')
 
 PAGES = [A.p01, A.p02, A.p03, A.p04, A.p05, A.p06, A.p07, A.p08, A.p09, A.p10, A.p11,
-         B.p12, B.p13, B.p14, B.p15, B.p16, B.p22b, B.p17, B.p18, B.p19, B.p20, B.p21, B.p23]
+         B.p12, B.p13, B.p14, B.p15, B.p16, B.p22b, B.p22c, B.p17, B.p18, B.p19, B.p20, B.p21, B.p23]
 
 
 def build():

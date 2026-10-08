@@ -202,53 +202,105 @@ def p17(prs):
         rect(sl, x, 486, 108, 40, fill='FFFFFF', line=C['line'], radius=20)
         text(sl, x, 486, 108, 40, lb, size=19, color=C['t1'], align='center', valign='middle')
         x += 122
-    footer(sl, '健身房运营管理系统 · 课程答辩', 17)
+    footer(sl, '健身房运营管理系统 · 课程答辩', 19)
     return sl
 
 
 def p22b(prs):
-    """课程管理（管理员）"""
+    """排课、选课与课程维护"""
     sl = blank(prs, C['white'])
-    header(sl, '管理员功能：课程维护（增删改查）')
+    header(sl, '排课、选课与课程维护')
 
     items = [
-        ('01', '新建课程', '填写课程编号、名称、类型（团课 / 私教）、教练、场地、起止时间与容量；服务端校验编号唯一、时间合法、排课不冲突（SYS-R3）'),
-        ('02', '查询课程', '按列表查看全部课程，展示编号、名称、类型、教练、时间、已约 / 容量与状态；支持随时刷新'),
-        ('03', '编辑课程', '点列表中的「编辑」按钮载入原值；可修改名称、教练、场地、时间与容量；容量不得小于已预约人数（防超卖）'),
-        ('04', '下架 / 上架', '下架＝状态置为「已下架」（软删除，保留历史预约可追溯）；存在待上课预约时拒绝下架；可重新上架'),
+        ('01', '排课：管理员与店长均可新建课程',
+         '填写编号、名称、类型、教练、场地、起止时间与容量；校验编号唯一、时间合法，并按 SYS-R3 检测教练或场地时段冲突'),
+        ('02', '选课：所有登录用户可自愿报名',
+         '会员账号固定作用于本人（伪造 memberId 会被改写）；重复选课幂等，返回同一预约号；会籍过期或爽约受限会被拦截'),
+        ('03', '退课：自愿退出，规则明确',
+         '仅「已预约」状态可退；课程开始后不可退；重复退课返回 409；退课后名额立即释放'),
+        ('04', '维护：编辑、下架与重新上架',
+         '修改时容量不得小于已预约人数；下架为软删除（保留历史预约可追溯），存在待上课预约时拒绝下架'),
     ]
-    y = 110
+    y = 100
     for num, title, body in items:
-        rect(sl, 40, y, 1200, 116, fill=C['bg'], line=C['line'], radius=12)
-        rect(sl, 62, y + 34, 48, 48, fill=C['primary'], radius=8)
-        text(sl, 62, y + 34, 48, 48, num, size=22, bold=True, color='FFFFFF',
+        rect(sl, 40, y, 1200, 106, fill=C['bg'], line=C['line'], radius=12)
+        rect(sl, 62, y + 30, 46, 46, fill=C['primary'], radius=8)
+        text(sl, 62, y + 30, 46, 46, num, size=21, bold=True, color='FFFFFF',
              align='center', valign='middle')
-        text(sl, 130, y + 16, 1080, 34, title, size=25, bold=True, color=C['deep'],
+        text(sl, 126, y + 14, 1080, 30, title, size=23, bold=True, color=C['deep'],
              valign='middle')
-        text(sl, 130, y + 54, 1080, 52, body, size=18, color=C['t2'], spacing=1.45)
-        y += 128
-    conclusion(sl, 40, 542, 1200, '权限设计',
-               '课程的新建、修改、下架、上架均在服务端强制校验管理员角色，非管理员一律返回 403')
-    footer(sl, '来源：系统测试文档 · 课程管理 CRUD 用例组', 22)
+        text(sl, 126, y + 48, 1080, 48, body, size=17, color=C['t2'], spacing=1.42)
+        y += 116
+    conclusion(sl, 40, 566, 1200, '权限设计',
+               '会员调用排课接口返回 403；排课与课程维护对管理员和店长开放，数据重置仍仅管理员', h=64)
+    footer(sl, '来源：系统测试文档 · E2 排课与课程维护、E3 会员自愿选课退课', 17)
+    return sl
+
+
+def p22c(prs):
+    """会员注册与前后台联动"""
+    sl = blank(prs, C['white'])
+    header(sl, '会员注册与前后台联动')
+
+    text(sl, 40, 106, 660, 32, '会员自助注册（免登录）', size=24, bold=True,
+         color=C['deep'], valign='middle')
+    steps = [
+        ('01', '填写信息', '用户名、密码（至少 6 位）、姓名、手机号'),
+        ('02', '一次事务创建', '登录账号 + 会员档案 + 角色绑定，不留半成品数据'),
+        ('03', '自动编号并登录', '会员编号自动生成 M001…，注册成功即签发令牌'),
+    ]
+    y = 148
+    for num, t, d in steps:
+        rect(sl, 40, y, 660, 104, fill=C['bg'], line=C['line'], radius=10)
+        rect(sl, 60, y + 30, 46, 46, fill=C['primary'], radius=8)
+        text(sl, 60, y + 30, 46, 46, num, size=21, bold=True, color='FFFFFF',
+             align='center', valign='middle')
+        text(sl, 122, y + 16, 556, 30, t, size=22, bold=True, color=C['deep'],
+             valign='middle')
+        text(sl, 122, y + 50, 556, 44, d, size=17, color=C['t2'], spacing=1.4)
+        y += 114
+
+    rect(sl, 724, 106, 516, 232, fill=C['light2'], line=None, radius=12)
+    text(sl, 746, 126, 472, 32, '门店后台：会员 ↔ 课程联动', size=23, bold=True,
+         color=C['deep'], valign='middle')
+    text(sl, 746, 166, 472, 160,
+         '① 选中会员卡片 → 每门课出现「为 TA 约课」\n'
+         '② 课程卡显示「已报名（N）：姓名…」与余位\n'
+         '③ 未选会员时只提示，不显示代客按钮\n'
+         '④ 约课 / 签到 / 取消后，预约、余位与名单、已约门数三级联动',
+         size=17, color=C['t1'], spacing=1.55)
+
+    rect(sl, 724, 350, 516, 176, fill='FFFFFF', line=C['line'], radius=12)
+    text(sl, 746, 366, 472, 30, '角色与能力', size=22, bold=True, color=C['deep'],
+         valign='middle')
+    text(sl, 746, 402, 472, 112,
+         '会员：选课 / 退课 / 签到（仅本人）\n'
+         '店长：以上 + 排课与课程维护\n'
+         '管理员：以上 + 数据重置',
+         size=17, color=C['t1'], spacing=1.6)
+
+    conclusion(sl, 40, 540, 1200, '联动价值',
+               '注册把潜在会员纳入系统；联动让门店一眼看清每门课的真实报名情况', h=66)
+    footer(sl, '来源：系统测试文档 · A2 会员自助注册、G 会员↔课程余位联动', 18)
     return sl
 
 
 def p18(prs):
     """200 项六层检查"""
     sl = blank(prs, C['white'])
-    header(sl, '200 项检查，覆盖六个层次')
+    header(sl, '226 项检查，覆盖六个层次')
     rect(sl, 40, 108, 420, 452, fill=C['light'], line=None, radius=12)
-    text(sl, 60, 146, 380, 152, '200', size=116, bold=True, color=C['deep'],
+    text(sl, 60, 146, 380, 152, '226', size=116, bold=True, color=C['deep'],
          valign='middle', spacing=1.0)
     text(sl, 60, 306, 380, 40, '项自动化检查全部通过', size=22, color=C['t1'], valign='middle')
     text(sl, 60, 356, 380, 180,
          '从单元测试到真实浏览器点击，\n每一层都有可复现的执行命令与\n报告文件，答辩现场可逐条演示。',
          size=19, color=C['t2'], spacing=1.6)
     rows = [
-        ('Java 单元 · 架构守卫 · 行为驱动', '70'),
-        ('集成测试（登录 / 权限 / 全流程）', '54'),
+        ('Java 单元 · 架构守卫 · 行为驱动', '73'),
+        ('集成测试（登录 / 权限 / 全流程）', '68'),
         ('前端静态检查（防按钮无响应）', '5'),
-        ('真实浏览器测试（自动点击验证）', '35'),
+        ('真实浏览器测试（自动点击验证）', '44'),
         ('参考实现行为驱动（对照）', '18'),
         ('参考实现接口冒烟（对照）', '18'),
     ]
@@ -261,7 +313,7 @@ def p18(prs):
         y += 76
     conclusion(sl, 40, 578, 1200, '判断',
                '测试要能挡住"点了没反应"这类问题，所以既做静态检查，也做真实浏览器点击', h=62)
-    footer(sl, '来源：五份测试报告文件（verify/ 与 app/ 目录）', 18)
+    footer(sl, '来源：五份测试报告文件（verify/ 与 app/ 目录）', 20)
     return sl
 
 
@@ -297,7 +349,7 @@ def p19(prs):
         y += 118
     conclusion(sl, 40, 598, 1200, '判断',
                '能复现、能定位、能防回归，缺陷才是资产；只写"已修复"等于没讲', h=46)
-    footer(sl, '来源：系统测试文档 · 缺陷记录章节', 19)
+    footer(sl, '来源：系统测试文档 · 缺陷记录章节', 21)
     return sl
 
 
@@ -320,7 +372,7 @@ def p20(prs):
         rect(sl, x, 486, 108, 40, fill='FFFFFF', line=C['line'], radius=20)
         text(sl, x, 486, 108, 40, lb, size=19, color=C['t1'], align='center', valign='middle')
         x += 122
-    footer(sl, '健身房运营管理系统 · 课程答辩', 20)
+    footer(sl, '健身房运营管理系统 · 课程答辩', 22)
     return sl
 
 
@@ -335,7 +387,7 @@ def p21(prs):
             'S2 收费：下单、支付、回调幂等、异常订单、对账',
             'S4 预警：流失风险、爽约预测、新会员跟进',
             '登录与角色鉴权（服务端强制，越权拦截已测）',
-            '六层 200 项自动化检查 + 一键启动脚本']
+            '六层 226 项自动化检查 + 一键启动脚本']
     y = 176
     for d in done:
         rect(sl, 62, y, 656, 66, fill='FFFFFF', line=C['line'], radius=8)
@@ -357,34 +409,7 @@ def p21(prs):
          size=19, color=C['t1'], spacing=1.55)
     conclusion(sl, 40, 578, 1200, '下一步',
                '先补 S5 业务逻辑，再把会话改为 JWT，最后接入支付沙箱与 CI', h=62)
-    footer(sl, '来源：代码实现与测试报告 · 开放问题台账', 21)
-    return sl
-
-
-def p22b(prs):
-    """课程管理（管理员）"""
-    sl = blank(prs, C['white'])
-    header(sl, '管理员功能：课程维护（增删改查）')
-
-    items = [
-        ('01', '新建课程', '填写课程编号、名称、类型（团课 / 私教）、教练、场地、起止时间与容量；服务端校验编号唯一、时间合法、排课不冲突（SYS-R3）'),
-        ('02', '查询课程', '按列表查看全部课程，展示编号、名称、类型、教练、时间、已约 / 容量与状态；支持随时刷新'),
-        ('03', '编辑课程', '点列表中的「编辑」按钮载入原值；可修改名称、教练、场地、时间与容量；容量不得小于已预约人数（防超卖）'),
-        ('04', '下架 / 上架', '下架＝状态置为「已下架」（软删除，保留历史预约可追溯）；存在待上课预约时拒绝下架；可重新上架'),
-    ]
-    y = 110
-    for num, title, body in items:
-        rect(sl, 40, y, 1200, 116, fill=C['bg'], line=C['line'], radius=12)
-        rect(sl, 62, y + 34, 48, 48, fill=C['primary'], radius=8)
-        text(sl, 62, y + 34, 48, 48, num, size=22, bold=True, color='FFFFFF',
-             align='center', valign='middle')
-        text(sl, 130, y + 16, 1080, 34, title, size=25, bold=True, color=C['deep'],
-             valign='middle')
-        text(sl, 130, y + 54, 1080, 52, body, size=18, color=C['t2'], spacing=1.45)
-        y += 128
-    conclusion(sl, 40, 542, 1200, '权限设计',
-               '课程的新建、修改、下架、上架均在服务端强制校验管理员角色，非管理员一律返回 403')
-    footer(sl, '来源：系统测试文档 · 课程管理 CRUD 用例组', 22)
+    footer(sl, '来源：代码实现与测试报告 · 开放问题台账', 23)
     return sl
 
 
