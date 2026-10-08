@@ -206,22 +206,49 @@ def p17(prs):
     return sl
 
 
-def p18(prs):
-    """174 项六层检查"""
+def p22b(prs):
+    """课程管理（管理员）"""
     sl = blank(prs, C['white'])
-    header(sl, '174 项检查，覆盖六个层次')
+    header(sl, '管理员功能：课程维护（增删改查）')
+
+    items = [
+        ('01', '新建课程', '填写课程编号、名称、类型（团课 / 私教）、教练、场地、起止时间与容量；服务端校验编号唯一、时间合法、排课不冲突（SYS-R3）'),
+        ('02', '查询课程', '按列表查看全部课程，展示编号、名称、类型、教练、时间、已约 / 容量与状态；支持随时刷新'),
+        ('03', '编辑课程', '点列表中的「编辑」按钮载入原值；可修改名称、教练、场地、时间与容量；容量不得小于已预约人数（防超卖）'),
+        ('04', '下架 / 上架', '下架＝状态置为「已下架」（软删除，保留历史预约可追溯）；存在待上课预约时拒绝下架；可重新上架'),
+    ]
+    y = 110
+    for num, title, body in items:
+        rect(sl, 40, y, 1200, 116, fill=C['bg'], line=C['line'], radius=12)
+        rect(sl, 62, y + 34, 48, 48, fill=C['primary'], radius=8)
+        text(sl, 62, y + 34, 48, 48, num, size=22, bold=True, color='FFFFFF',
+             align='center', valign='middle')
+        text(sl, 130, y + 16, 1080, 34, title, size=25, bold=True, color=C['deep'],
+             valign='middle')
+        text(sl, 130, y + 54, 1080, 52, body, size=18, color=C['t2'], spacing=1.45)
+        y += 128
+    conclusion(sl, 40, 542, 1200, '权限设计',
+               '课程的新建、修改、下架、上架均在服务端强制校验管理员角色，非管理员一律返回 403')
+    footer(sl, '来源：系统测试文档 · 课程管理 CRUD 用例组', 22)
+    return sl
+
+
+def p18(prs):
+    """200 项六层检查"""
+    sl = blank(prs, C['white'])
+    header(sl, '200 项检查，覆盖六个层次')
     rect(sl, 40, 108, 420, 452, fill=C['light'], line=None, radius=12)
-    text(sl, 60, 146, 380, 152, '174', size=116, bold=True, color=C['deep'],
+    text(sl, 60, 146, 380, 152, '200', size=116, bold=True, color=C['deep'],
          valign='middle', spacing=1.0)
     text(sl, 60, 306, 380, 40, '项自动化检查全部通过', size=22, color=C['t1'], valign='middle')
     text(sl, 60, 356, 380, 180,
          '从单元测试到真实浏览器点击，\n每一层都有可复现的执行命令与\n报告文件，答辩现场可逐条演示。',
          size=19, color=C['t2'], spacing=1.6)
     rows = [
-        ('Java 单元 · 架构守卫 · 行为驱动', '56'),
-        ('集成测试（登录 / 权限 / 全流程）', '45'),
+        ('Java 单元 · 架构守卫 · 行为驱动', '70'),
+        ('集成测试（登录 / 权限 / 全流程）', '54'),
         ('前端静态检查（防按钮无响应）', '5'),
-        ('真实浏览器测试（自动点击验证）', '32'),
+        ('真实浏览器测试（自动点击验证）', '35'),
         ('参考实现行为驱动（对照）', '18'),
         ('参考实现接口冒烟（对照）', '18'),
     ]
@@ -308,7 +335,7 @@ def p21(prs):
             'S2 收费：下单、支付、回调幂等、异常订单、对账',
             'S4 预警：流失风险、爽约预测、新会员跟进',
             '登录与角色鉴权（服务端强制，越权拦截已测）',
-            '六层 174 项自动化检查 + 一键启动脚本']
+            '六层 200 项自动化检查 + 一键启动脚本']
     y = 176
     for d in done:
         rect(sl, 62, y, 656, 66, fill='FFFFFF', line=C['line'], radius=8)
@@ -334,7 +361,34 @@ def p21(prs):
     return sl
 
 
-def p22(prs):
+def p22b(prs):
+    """课程管理（管理员）"""
+    sl = blank(prs, C['white'])
+    header(sl, '管理员功能：课程维护（增删改查）')
+
+    items = [
+        ('01', '新建课程', '填写课程编号、名称、类型（团课 / 私教）、教练、场地、起止时间与容量；服务端校验编号唯一、时间合法、排课不冲突（SYS-R3）'),
+        ('02', '查询课程', '按列表查看全部课程，展示编号、名称、类型、教练、时间、已约 / 容量与状态；支持随时刷新'),
+        ('03', '编辑课程', '点列表中的「编辑」按钮载入原值；可修改名称、教练、场地、时间与容量；容量不得小于已预约人数（防超卖）'),
+        ('04', '下架 / 上架', '下架＝状态置为「已下架」（软删除，保留历史预约可追溯）；存在待上课预约时拒绝下架；可重新上架'),
+    ]
+    y = 110
+    for num, title, body in items:
+        rect(sl, 40, y, 1200, 116, fill=C['bg'], line=C['line'], radius=12)
+        rect(sl, 62, y + 34, 48, 48, fill=C['primary'], radius=8)
+        text(sl, 62, y + 34, 48, 48, num, size=22, bold=True, color='FFFFFF',
+             align='center', valign='middle')
+        text(sl, 130, y + 16, 1080, 34, title, size=25, bold=True, color=C['deep'],
+             valign='middle')
+        text(sl, 130, y + 54, 1080, 52, body, size=18, color=C['t2'], spacing=1.45)
+        y += 128
+    conclusion(sl, 40, 542, 1200, '权限设计',
+               '课程的新建、修改、下架、上架均在服务端强制校验管理员角色，非管理员一律返回 403')
+    footer(sl, '来源：系统测试文档 · 课程管理 CRUD 用例组', 22)
+    return sl
+
+
+def p23(prs):
     """结束页"""
     sl = blank(prs, C['white'])
     rect(sl, 0, 0, W, 14, fill=C['primary'])

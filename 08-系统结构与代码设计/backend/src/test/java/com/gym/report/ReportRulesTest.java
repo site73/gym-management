@@ -39,7 +39,7 @@ class ReportRulesTest {
                 new MemberView(1L, "M001", "张三", null, "active", null, 1, 0, LocalDateTime.now()),
                 new MemberView(2L, "M002", "李四", null, "expired", null, 0, 0, LocalDateTime.now())));
         when(course.listCourses()).thenReturn(List.of(
-                new CourseView(11L, "C001", "动感单车", 101L, "A 厅", LocalDateTime.now(),
+                new CourseView(11L, "C001", "动感单车", "group", 101L, "A 厅", LocalDateTime.now(),
                         LocalDateTime.now().plusHours(1), 20, 18, 2, "published")));
         when(booking.countByStatus()).thenReturn(Map.of(
                 "booked", 3L, "checked_in", 5L, "no_show", 2L));     // 总 10，爽约 2 → 20.0%

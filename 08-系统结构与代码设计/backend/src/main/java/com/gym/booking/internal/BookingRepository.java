@@ -15,6 +15,8 @@ public interface BookingRepository extends JpaRepository<BookingEntity, Long> {
     /** 会员的预约列表（倒序，管理后台用） */
     java.util.List<BookingEntity> findByMemberIdOrderByIdDesc(Long memberId);
 
+    long countByCourseIdAndStatus(Long courseId, String status);
+
     long countByMemberIdAndStatusAndCheckinAtAfter(Long memberId, String status, java.time.LocalDateTime after);
 
     java.util.Optional<BookingEntity> findFirstByMemberIdAndStatusOrderByCheckinAtDesc(Long memberId, String status);

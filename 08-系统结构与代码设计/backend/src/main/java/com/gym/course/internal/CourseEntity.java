@@ -63,6 +63,7 @@ public class CourseEntity {
     public Long getId() { return id; }
     public String getCode() { return code; }
     public String getName() { return name; }
+    public String getType() { return type; }
     public String getStatus() { return status; }
     public Integer getCapacity() { return capacity; }
     public Integer getBookedCount() { return bookedCount; }
@@ -70,4 +71,16 @@ public class CourseEntity {
     public LocalDateTime getEndTime() { return endTime; }
     public Long getCoachId() { return coachId; }
     public String getRoom() { return room; }
+
+    /* ---- 管理员编辑课程 ---- */
+    public void setCode(String code) { this.code = code; }
+    public void setName(String name) { this.name = name; }
+    public void setType(String type) { this.type = type; }
+    public void setCoachId(Long coachId) { this.coachId = coachId; }
+    public void setRoom(String room) { this.room = room; }
+    public void setStartTime(LocalDateTime startTime) { this.startTime = startTime; }
+    public void setEndTime(LocalDateTime endTime) { this.endTime = endTime; }
+    public void setCapacity(Integer capacity) { this.capacity = capacity; }
+    public void setBookedCount(Integer bookedCount) { this.bookedCount = bookedCount; }
+    public void setStatus(String status) { this.status = status; }
 }

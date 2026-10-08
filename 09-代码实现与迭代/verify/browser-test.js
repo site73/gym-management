@@ -232,8 +232,27 @@ async function waitFor(fn, timeout = 15000) {
     check(D, '点击「重置数据」有响应', '弹出确认并完成', resetDialog ? '已确认并重置' : '无弹窗',
           resetDialog);
 
-    /* ---------- E 运行时健康 ---------- */
-    const E = 'E 运行时健康';
+  /* ---------- E 课程管理（管理员） ---------- */
+  const E = 'E 课程管理';
+  await page.click('#tabCourse');
+  await waitForText(page, '#adminCourseBox', 'C001');
+  const rowsBefore = await page.locator('#adminCourseBox tr').count();
+  check(E, '课程列表加载', '含表头与课程行', `${rowsBefore} 行`, rowsBefore >= 2);
+
+  await page.click('#adminCourseBox tr:last-child button:has-text("编辑")');
+  const titleChanged = await waitForText(page, '#courseFormTitle', '编辑课程');
+  check(E, '点击「编辑」有响应', '表单标题变为编辑课程',
+        await page.textContent('#courseFormTitle'), titleChanged);
+
+  await page.fill('#cfName', '动感单车·答辩演示版');
+  await page.fill('#cfCapacity', '20');
+  await page.click('#courseSubmitBtn');
+  const saved = await waitForText(page, '#adminCourseBox', '答辩演示版');
+  check(E, '点击「保存课程」有响应', '列表出现修改后的名称',
+        saved ? '已保存并刷新' : '未更新', saved);
+
+  /* ---------- F 运行时健康 ---------- */
+  const F = 'F 运行时健康';
     check(E, '无 JS 控制台错误', '0 个',
           consoleErrors.length === 0 ? '0 个' : consoleErrors.slice(0, 3).join(' | '),
           consoleErrors.length === 0);

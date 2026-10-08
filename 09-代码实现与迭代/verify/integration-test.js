@@ -221,8 +221,76 @@ const login = async (u, p) => call('POST', '/api/auth/login', { username: u, pas
   r = await call('POST', '/api/admin/reset', {}, T_ADM);
   check(D, '管理员重置演示数据', '200', `${r.status}`, r.status === 200);
 
-  /* ==================== E 会话 ==================== */
-  const E = 'E 会话管理';
+  /* ==================== E 课程管理（管理员） ==================== */
+  const E = 'E 课程管理 CRUD';
+  const future = new Date(Date.now() + 3 * 86400000);
+  const iso = d => new Date(d).toISOString().slice(0, 16);
+  const s0 = iso(future), e0 = iso(future.getTime() + 3600000);
+
+  const created = await call('POST', '/api/courses', {
+    code: 'C901', name: '搏击操', type: 'group',
+    coachId: 101, room: 'A 厅', startTime: s0, endTime: e0, capacity: 18
+  }, T_ADM);
+  check(E, '管理员新建课程', '200 + 返回 id', `${created.status} id=${created.data && created.data.id}`,
+        created.status === 200 && !!created.data.id);
+  const cid = created.data && created.data.id;
+
+  const dup = await call('POST', '/api/courses', {
+    code: 'C901', name: '搏击操B', type: 'group',
+    coachId: 101, room: 'A 厅', startTime: s0, endTime: e0, capacity: 18
+  }, T_ADM);
+  check(E, '课程编号重复被拒绝', '400', `${dup.status} ${dup.data && dup.data.reason}`,
+        dup.status === 400 && /编号/.test(dup.data.reason || ''));
+
+  const badRange = await call('POST', '/api/courses', {
+    code: 'C902', name: '瑜伽', type: 'group',
+    coachId: 101, room: 'B 厅', startTime: e0, endTime: s0, capacity: 10
+  }, T_ADM);
+  check(E, '结束时间早于开始时间被拒绝', '400', `${badRange.status}`, badRange.status === 400);
+
+  const badCap = await call('POST', '/api/courses', {
+    code: 'C903', name: '瑜伽', type: 'group',
+    coachId: 101, room: 'B 厅', startTime: s0, endTime: e0, capacity: 0
+  }, T_ADM);
+  check(E, '容量小于 1 被拒绝', '400', `${badCap.status}`, badCap.status === 400);
+
+  const past = new Date(Date.now() - 2 * 86400000);
+  const badPast = await call('POST', '/api/courses', {
+    code: 'C904', name: '旧课', type: 'group',
+    coachId: 101, room: 'A 厅',
+    startTime: iso(past), endTime: iso(past.getTime() + 3600000), capacity: 10
+  }, T_ADM);
+  check(E, '开始时间早于当前时间被拒绝', '400', `${badPast.status}`, badPast.status === 400);
+
+  const conflict = await call('POST', '/api/courses', {
+    code: 'C905', name: '冲突课', type: 'group',
+    coachId: 101, room: 'A 厅', startTime: s0, endTime: e0, capacity: 20
+  }, T_ADM);
+  check(E, '教练/场地排课冲突被拒绝（SYS-R3）', '400 + 含 SYS-R3',
+        `${conflict.status} ${conflict.data && conflict.data.reason}`,
+        conflict.status === 400 && /SYS-R3/.test(conflict.data.reason || ''));
+
+  const upd = await call('PUT', `/api/courses/${cid}`, {
+    code: 'C901', name: '搏击操进阶', type: 'group',
+    coachId: 102, room: 'A 厅', startTime: s0, endTime: e0, capacity: 22
+  }, T_ADM);
+  check(E, '管理员修改课程', '200 + 名称/容量生效',
+        `${upd.status} name=${upd.data && upd.data.name} cap=${upd.data && upd.data.capacity}`,
+        upd.status === 200 && upd.data.name === '搏击操进阶' && upd.data.capacity === 22);
+
+  const off = await call('DELETE', `/api/courses/${cid}`, {}, T_ADM);
+  const after = await call('GET', `/api/courses/${cid}`, undefined, T_ADM);
+  check(E, '管理员下架课程', '200 + 状态变 cancelled',
+        off.status + ' status=' + (after.data && after.data.status),
+        off.status === 200 && after.data.status === 'cancelled');
+
+  const rep = await call('POST', `/api/courses/${cid}/publish`, {}, T_ADM);
+  check(E, '管理员重新上架课程', '200 + published',
+        `${rep.status} status=${rep.data && rep.data.status}`,
+        rep.status === 200 && rep.data.status === 'published');
+
+  /* ==================== F 会话 ==================== */
+  const F = 'F 会话管理';
   r = await call('POST', '/api/auth/logout', {}, T_M1);
   check(E, '退出登录', '200', `${r.status}`, r.status === 200);
 

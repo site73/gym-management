@@ -197,6 +197,11 @@ public class BookingAppService implements BookingFacade {
     }
 
     @Override
+    public long countActiveBookingsOfCourse(Long courseId) {
+        return bookingRepository.countByCourseIdAndStatus(courseId, "booked");
+    }
+
+    @Override
     public java.util.List<CoachTimes> checkedInTimesByCoach(int withinDays) {
         java.util.List<CoachTimes> list = new java.util.ArrayList<>();
         for (Object[] row : bookingRepository.sumCheckedInTimesByCoach(

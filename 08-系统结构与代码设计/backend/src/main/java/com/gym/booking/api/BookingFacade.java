@@ -58,6 +58,9 @@ public interface BookingFacade {
     /** 按教练汇总近 N 天已签到的课时数（SYS-R10 提成核算） */
     java.util.List<CoachTimes> checkedInTimesByCoach(int withinDays);
 
+    /** 某课程当前有效（status=booked）的预约数——用于课程下架前的兜底校验 */
+    long countActiveBookingsOfCourse(Long courseId);
+
     /** 教练课时汇总行 */
     record CoachTimes(Long coachId, long times) {}
 }

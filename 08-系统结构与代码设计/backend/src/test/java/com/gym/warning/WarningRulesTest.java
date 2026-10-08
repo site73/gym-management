@@ -116,7 +116,7 @@ class WarningRulesTest {
     @Test
     @DisplayName("SYS-R8：高概率 + 课程已满 → 建议释放名额；未满 → 建议提醒")
     void prediction_actions() {
-        CourseView full = new CourseView(12L, "C002", "瑜伽", 102L, "B 厅",
+        CourseView full = new CourseView(12L, "C002", "瑜伽", "group", 102L, "B 厅",
                 NOW, NOW.plusHours(1), 15, 15, 0, "full");
         when(course.listCourses()).thenReturn(List.of(full));
         when(membership.listMembers()).thenReturn(List.of(member(1, "张三", 200)));
@@ -137,7 +137,7 @@ class WarningRulesTest {
     @Test
     @DisplayName("SYS-R8：低概率 → 无需处理")
     void prediction_none_for_low_risk() {
-        CourseView open = new CourseView(11L, "C001", "动感单车", 101L, "A 厅",
+        CourseView open = new CourseView(11L, "C001", "动感单车", "group", 101L, "A 厅",
                 NOW, NOW.plusHours(1), 20, 18, 2, "published");
         when(course.listCourses()).thenReturn(List.of(open));
         when(membership.listMembers()).thenReturn(List.of(member(1, "张三", 400)));

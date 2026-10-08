@@ -27,4 +27,15 @@ public interface CourseRepository extends JpaRepository<CourseEntity, Long> {
                    "and (coach_id = :coachId or room = :room)", nativeQuery = true)
     long countConflict(@Param("coachId") Long coachId, @Param("room") String room,
                        @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    /** 排课冲突检测（排除自身，用于修改课程时避免与自己冲突） */
+    @Query(value = "select count(*) from course where status <> 'cancelled' and id <> :id " +
+                   "and start_time < :end and end_time > :start " +
+                   "and (coach_id = :coachId or room = :room)", nativeQuery = true)
+    long countConflictExcluding(@Param("id") Long id, @Param("coachId") Long coachId,
+                                @Param("room") String room, @Param("start") LocalDateTime start,
+                                @Param("end") LocalDateTime end);
+
+    /** 课程编号是否已存在（用于唯一性校验） */
+    boolean existsByCode(String code);
 }

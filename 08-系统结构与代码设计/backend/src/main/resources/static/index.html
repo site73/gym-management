@@ -105,6 +105,7 @@
     <button id="tabRisk" onclick="switchTab('risk')">风险与预测</button>
     <button id="tabPerf" onclick="switchTab('perf')">业绩与提成</button>
     <button id="tabReport" onclick="switchTab('report')">经营摘要 / 审计</button>
+    <button id="tabCourse" class="hidden" onclick="switchTab('course')">课程管理</button>
     <button id="tabSystem" class="hidden" onclick="switchTab('system')">系统管理</button>
   </div>
 
@@ -200,6 +201,45 @@
         <h2 style="margin-top:16px">审计日志（最近 50 条）</h2>
         <div class="m"><button class="btn ghost" onclick="loadAudit()">刷新</button></div>
         <div id="auditBox" class="m">未加载</div>
+      </section>
+
+      <!-- ---------- 门店后台：课程管理（仅管理员） ---------- -->
+      <section id="viewCourse" class="panel hidden">
+        <h2>课程维护（管理员）</h2>
+        <div class="m">新建课程，或点击列表中的「编辑」修改已有课程。</div>
+
+        <div class="card" id="courseForm" style="padding:16px;background:var(--bg);border:1px solid var(--line)">
+          <div class="t" id="courseFormTitle">新建课程</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;align-items:center">
+            <label for="cfCode">课程编号</label>
+            <input id="cfCode" placeholder="如 C101" style="width:120px" maxlength="32">
+            <label for="cfName">课程名称</label>
+            <input id="cfName" placeholder="如 普拉提" style="width:140px" maxlength="64">
+            <label for="cfType">类型</label>
+            <select id="cfType">
+              <option value="group">团课</option>
+              <option value="pt">私教</option>
+            </select>
+            <label for="cfCoach">教练 ID</label>
+            <input id="cfCoach" type="number" placeholder="101" style="width:100px">
+            <label for="cfRoom">场地</label>
+            <input id="cfRoom" placeholder="A 厅" style="width:100px" maxlength="32">
+            <label for="cfStart">开始</label>
+            <input id="cfStart" type="datetime-local">
+            <label for="cfEnd">结束</label>
+            <input id="cfEnd" type="datetime-local">
+            <label for="cfCapacity">容量</label>
+            <input id="cfCapacity" type="number" value="15" min="1" style="width:100px">
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn" id="courseSubmitBtn" onclick="submitCourse()">保存课程</button>
+            <button class="btn ghost" id="courseCancelBtn" onclick="closeCourseForm()" style="display:none">取消编辑</button>
+          </div>
+        </div>
+
+        <h2 style="margin-top:20px">课程列表</h2>
+        <div class="m"><button class="btn ghost" onclick="loadAdminCourses()">刷新列表</button></div>
+        <div id="adminCourseBox" class="m">未加载</div>
       </section>
 
       <!-- ---------- 门店后台：系统管理 ---------- -->
@@ -315,6 +355,7 @@ async function enterApp() {
   $('mainGrid').classList.toggle('single', !isStaff);
   $('staffTabs').classList.toggle('hidden', !isStaff);
   $('tabSystem').classList.toggle('hidden', !(isStaff && u.admin));
+  $('tabCourse').classList.toggle('hidden', !(isStaff && u.admin));
 
   if (isStaff) {
     showView('viewBooking');
@@ -326,7 +367,7 @@ async function enterApp() {
     await loadSettlements();
     fillPredictCourses();
   } else {
-    ['viewBooking','viewPay','viewRisk','viewPerf','viewReport','viewSystem'].forEach(v => $(v).classList.add('hidden'));
+    ALL_VIEWS.forEach(v => $(v).classList.add('hidden'));
     $('viewMember').classList.remove('hidden');
     await loadMyInfo();
     await loadMemberCourses();
@@ -335,18 +376,22 @@ async function enterApp() {
 }
 
 /* ================= 视图切换 ================= */
+const ALL_VIEWS = ['viewBooking','viewPay','viewRisk','viewPerf','viewReport','viewCourse','viewSystem','viewMember'];
+
 function showView(id) {
-  ['viewBooking','viewPay','viewRisk','viewPerf','viewReport','viewSystem','viewMember']
-    .forEach(v => $(v).classList.toggle('hidden', v !== id));
+  ALL_VIEWS.forEach(v => $(v).classList.toggle('hidden', v !== id));
 }
 function switchTab(tab) {
-  const map = { booking: 'viewBooking', pay: 'viewPay', risk: 'viewRisk', perf: 'viewPerf', report: 'viewReport', system: 'viewSystem' };
-  const ids = { booking: 'tabBooking', pay: 'tabPay', risk: 'tabRisk', perf: 'tabPerf', report: 'tabReport', system: 'tabSystem' };
+  const map = { booking: 'viewBooking', pay: 'viewPay', risk: 'viewRisk', perf: 'viewPerf',
+                report: 'viewReport', course: 'viewCourse', system: 'viewSystem' };
+  const ids = { booking: 'tabBooking', pay: 'tabPay', risk: 'tabRisk', perf: 'tabPerf',
+                report: 'tabReport', course: 'tabCourse', system: 'tabSystem' };
   Object.keys(map).forEach(k => $(ids[k]).classList.toggle('active', k === tab));
   showView(map[tab]);
   if (tab === 'report') { loadSummary(); loadAudit(); }
   if (tab === 'risk') loadRisks();
   if (tab === 'perf') loadCommissions();
+  if (tab === 'course') loadAdminCourses();
 }
 
 /* ================= 会员端 ================= */
@@ -535,6 +580,117 @@ async function loadSettlements() {
 async function renewRemind() {
   const r = await api('POST', '/api/jobs/renew-remind?days=7');
   if (r.status === 200) alert(`需提醒会员 ${r.data.count} 人：${(r.data.members || []).join('、') || '无'}`);
+}
+
+/* ================= 门店后台：课程管理（仅管理员） ================= */
+// null = 表单关闭（新建模式）；数字 = 正在编辑的课程 ID
+let editingCourseId = null;
+
+async function loadAdminCourses() {
+  const r = await api('GET', '/api/courses');
+  const list = Array.isArray(r.data) ? r.data : [];
+  if (list.length === 0) { $('adminCourseBox').innerHTML = '暂无课程'; return; }
+  $('adminCourseBox').innerHTML = `<table>
+    <tr><th>ID</th><th>编号</th><th>名称</th><th>类型</th><th>时间</th><th>已约/容量</th><th>状态</th><th>操作</th></tr>
+    ${list.map(c => {
+      const off = 'cancelled' === c.status;
+      const cls = off ? 'err' : (c.remaining > 0 ? 'ok' : 'warn');
+      const label = 'cancelled' === c.status ? '已下架'
+                  : 'full' === c.status ? '已满员'
+                  : 'published' === c.status ? '已发布' : (c.status || '');
+      return `<tr>
+        <td>${c.id}</td><td>${c.code}</td><td>${c.name}</td>
+        <td>${'pt' === c.type ? '私教' : '团课'}</td>
+        <td>${String(c.startTime || '').slice(0, 16).replace('T', ' ')}</td>
+        <td>${c.bookedCount}/${c.capacity}</td>
+        <td><span class="chip ${cls}">${label}</span></td>
+        <td>
+          <button class="btn ghost" onclick="startEdit('${c.id}')">编辑</button>
+          ${off
+            ? `<button class="btn" onclick="publishCourse('${c.id}')">上架</button>`
+            : `<button class="btn warn" onclick="offlineCourse('${c.id}')">下架</button>`}
+        </td></tr>`;
+    }).join('')}
+  </table>`;
+}
+
+function showCourseForm(course) {
+  editingCourseId = course && course.id ? course.id : null;
+  $('courseFormTitle').textContent = editingCourseId ? `编辑课程 ${course.code}` : '新建课程';
+  $('cfCode').value = course && course.code ? course.code : '';
+  $('cfCode').disabled = !!editingCourseId;      // 编号建后不可改
+  $('cfName').value = course && course.name ? course.name : '';
+  $('cfType').value = course && course.type ? course.type : 'group';
+  $('cfCoach').value = course && course.coachId ? course.coachId : '';
+  $('cfRoom').value = course && course.room ? course.room : '';
+  $('cfStart').value = course && course.startTime ? String(course.startTime).slice(0, 16) : '';
+  $('cfEnd').value = course && course.endTime ? String(course.endTime).slice(0, 16) : '';
+  $('cfCapacity').value = course && course.capacity ? course.capacity : 15;
+  $('courseCancelBtn').style.display = editingCourseId ? '' : 'none';
+}
+
+function closeCourseForm() {
+  editingCourseId = null;
+  $('courseFormTitle').textContent = '新建课程';
+  $('cfCode').disabled = false;
+  showCourseForm(null);
+  $('courseCancelBtn').style.display = 'none';
+}
+
+async function submitCourse() {
+  const code = $('cfCode').value.trim();
+  const name = $('cfName').value.trim();
+  const start = $('cfStart').value;
+  const end = $('cfEnd').value;
+  if (!code || !name || !start || !end) {
+    alert('请填写课程编号、名称、开始与结束时间');
+    return;
+  }
+  const body = {
+    code: code,
+    name: name,
+    type: $('cfType').value,
+    coachId: $('cfCoach').value ? Number($('cfCoach').value) : null,
+    room: $('cfRoom').value.trim(),
+    startTime: start + ':00',
+    endTime: end + ':00',
+    capacity: Number($('cfCapacity').value || 0),
+  };
+  const r = editingCourseId
+      ? await api('PUT', `/api/courses/${editingCourseId}`, body)
+      : await api('POST', '/api/courses', body);
+  if (r.status === 200) {
+    alert(editingCourseId ? '课程已更新' : '课程已创建（ID ' + r.data.id + '）');
+  } else {
+    alert('保存失败：' + ((r.data && r.data.reason) || ''));
+  }
+  const keepId = editingCourseId;
+  closeCourseForm();
+  await loadAdminCourses();
+  await loadCourses();
+}
+
+async function startEdit(id) {
+  const r = await api('GET', `/api/courses/${id}`);
+  if (r.status === 200 && r.data) showCourseForm(r.data);
+  else alert('读取课程失败');
+}
+
+async function offlineCourse(id) {
+  if (!confirm('确认下架该课程？下架后会员不可再预约。')) return;
+  const r = await api('DELETE', `/api/courses/${id}`, {});
+  if (r.status === 200) alert('课程已下架');
+  else alert('下架失败：' + ((r.data && r.data.reason) || '（可能仍有待上课预约）') + (r.data && r.data.code ? ' [' + r.data.code + ']' : ''));
+  await loadAdminCourses();
+  await loadCourses();
+}
+
+async function publishCourse(id) {
+  const r = await api('POST', `/api/courses/${id}/publish`, {});
+  if (r.status === 200) alert('课程已重新上架');
+  else alert('上架失败：' + ((r.data && r.data.reason) || ''));
+  await loadAdminCourses();
+  await loadCourses();
 }
 
 /* ================= 门店后台：风险与预测 ================= */
