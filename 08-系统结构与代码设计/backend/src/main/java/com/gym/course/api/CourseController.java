@@ -12,7 +12,7 @@ import java.util.Map;
  * 课程入口。
  *
  * <p>查询对已登录用户开放（会员选课、后台查看）；
- * <b>新建 / 修改 / 下架 / 上架属于管理员操作</b>，由服务端强制校验角色（非管理员返回 403）。
+ * <b>新建（排课）/ 修改 / 下架 / 上架属于门店后台操作</b>，由服务端强制校验角色（会员返回 403）。
  */
 @RestController
 @RequestMapping("/api/courses")
@@ -41,14 +41,14 @@ public class CourseController {
     /** 新建课程（管理员） */
     @PostMapping
     public ResponseEntity<CourseView> create(@RequestBody CourseDraft draft) {
-        AuthContext.requireAdmin();
+        AuthContext.requireStaff();
         return ResponseEntity.ok(courseFacade.createCourse(draft));
     }
 
     /** 修改课程（管理员） */
     @PutMapping("/{id}")
     public CourseView update(@PathVariable Long id, @RequestBody CourseDraft draft) {
-        AuthContext.requireAdmin();
+        AuthContext.requireStaff();
         return courseFacade.updateCourse(id, draft);
     }
 
@@ -60,7 +60,7 @@ public class CourseController {
      */
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, Object>> cancel(@PathVariable Long id) {
-        AuthContext.requireAdmin();
+        AuthContext.requireStaff();
         long active = bookingFacade.countActiveBookingsOfCourse(id);
         if (active > 0) {
             return ResponseEntity.status(409).body(Map.of(
@@ -74,7 +74,7 @@ public class CourseController {
     /** 重新上架课程（管理员） */
     @PostMapping("/{id}/publish")
     public CourseView publish(@PathVariable Long id) {
-        AuthContext.requireAdmin();
+        AuthContext.requireStaff();
         return courseFacade.publishCourse(id);
     }
 }

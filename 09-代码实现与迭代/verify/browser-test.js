@@ -137,19 +137,19 @@ async function waitFor(fn, timeout = 15000) {
     await page.locator('#memberCourses .card button').first().click();
     const grew = await waitFor(async () => (await page.locator('#myBookings .card').count()) > beforeCount);
     const afterCount = await page.locator('#myBookings .card').count();
-    check(B, '点击「立即约课」有响应', '弹出提示 + 预约列表增加', `弹窗=${dialogs.length} 预约 ${beforeCount}→${afterCount}`,
+    check(B, '点击「选课」有响应', '弹出提示 + 预约列表增加', `弹窗=${dialogs.length} 预约 ${beforeCount}→${afterCount}`,
           dialogs.length >= 1 && grew);
 
-    // 取消预约
-    const cancelBtn = page.locator('#myBookings .card button:has-text("取消预约")').first();
+    // 自愿退课
+    const cancelBtn = page.locator('#myBookings .card button:has-text("退课")').first();
     const hasCancel = await cancelBtn.count() > 0;
     if (hasCancel) {
       await cancelBtn.click();
       const cancelled = await waitForText(page, '#myBookings', '已取消');
       const listText = await page.textContent('#myBookings');
-      check(B, '点击「取消预约」有响应', '状态变为已取消', cancelled ? '已取消' : '状态未变化', cancelled);
+      check(B, '点击「退课」有响应', '状态变为已取消', cancelled ? '已取消' : '状态未变化', cancelled);
     } else {
-      check(B, '点击「取消预约」有响应', '存在可取消的预约', '未找到按钮', false);
+      check(B, '点击「退课」有响应', '存在可退课的预约', '未找到按钮', false);
     }
 
     // 退出登录
@@ -210,8 +210,10 @@ async function waitFor(fn, timeout = 15000) {
     check(C, '经营摘要自动加载', '显示 KPI', summaryOk ? '已渲染' : '无内容', summaryOk);
     check(C, '审计日志自动加载', '有记录', auditOk ? '已渲染' : '无内容', auditOk);
 
-    check(C, '店长看不到系统管理标签', '隐藏', await page.isVisible('#tabSystem') ? '仍可见' : '已隐藏',
+    check(C, '店长看不到系统管理标签（仅管理员）', '隐藏', await page.isVisible('#tabSystem') ? '仍可见' : '已隐藏',
           !(await page.isVisible('#tabSystem')));
+    check(C, '店长能看到课程管理标签（可排课）', '可见', await page.isVisible('#tabCourse') ? '可见' : '隐藏',
+          await page.isVisible('#tabCourse'));
 
     /* ---------- D 管理员 ---------- */
     const D = 'D 管理员';

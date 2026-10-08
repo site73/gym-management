@@ -355,7 +355,8 @@ async function enterApp() {
   $('mainGrid').classList.toggle('single', !isStaff);
   $('staffTabs').classList.toggle('hidden', !isStaff);
   $('tabSystem').classList.toggle('hidden', !(isStaff && u.admin));
-  $('tabCourse').classList.toggle('hidden', !(isStaff && u.admin));
+  // 排课（课程维护）对管理员与店长均开放；数据重置仅管理员
+  $('tabCourse').classList.toggle('hidden', !isStaff);
 
   if (isStaff) {
     showView('viewBooking');
@@ -417,11 +418,12 @@ async function loadMemberCourses() {
       <div class="t">${c.name} · ${(c.startTime || '').slice(11, 16)}</div>
       <div class="m">教练：${c.coachId || '待定'} ｜ 剩余名额：${c.remaining}/${c.capacity}
         ${c.remaining <= 0 ? '<span class="chip err">已满</span>' : ''}</div>
-      <div><button class="btn" ${c.remaining > 0 ? '' : 'disabled'} onclick="memberBook('${c.id}')">立即约课</button></div>
+      <div><button class="btn" ${c.remaining > 0 ? '' : 'disabled'} onclick="memberBook('${c.id}')">选课</button></div>
     </div>`).join('');
 }
 async function memberBook(courseId) {
-  const r = await api('POST', '/api/bookings', { courseId });
+  // 自愿选课：走专用入口，服务端固定作用于本人
+  const r = await api('POST', '/api/enrollments', { courseId });
   if (r.status !== 200) { alert((r.data && r.data.ruleCode ? '[' + r.data.ruleCode + '] ' : '') + ((r.data && r.data.reason) || '约课失败')); }
   else { alert('约课成功'); }
   await loadMemberCourses(); await loadMyBookings();
@@ -439,7 +441,7 @@ async function loadMyBookings() {
       <div class="m">状态：<span class="chip ${cls}">${STATUS_CN[b.status] || b.status}</span>${channel}</div>
       <div>
         <button class="btn" ${can ? '' : 'disabled'} onclick="myCheckin('${b.id}')">扫码签到</button>
-        <button class="btn ghost" ${can ? '' : 'disabled'} onclick="myCancel('${b.id}')">取消预约</button>
+        <button class="btn warn" ${can ? '' : 'disabled'} onclick="myCancel('${b.id}')">退课</button>
       </div>
     </div>`;
   }).join('');
@@ -450,7 +452,8 @@ async function myCheckin(id) {
   await loadMyBookings();
 }
 async function myCancel(id) {
-  const r = await api('POST', `/api/bookings/${id}/cancel`, {});
+  // 自愿退课：课程开始后不可退，由服务端校验
+  const r = await api('POST', `/api/enrollments/${id}/withdraw`, {});
   if (r.status !== 200) alert('取消失败：' + ((r.data && r.data.reason) || ''));
   await loadMyBookings(); await loadMemberCourses();
 }

@@ -12,7 +12,7 @@
       "daysToExpire": 30,
       "visits30": 8,
       "createdDaysAgo": 200,
-      "penaltyUntil": "2026-10-13T16:51:07.338Z",
+      "penaltyUntil": "2026-10-15T16:15:42.786Z",
       "riskLevel": "high"
     },
     {
@@ -116,8 +116,8 @@
       "checkinChannel": "scan",
       "operatorId": null,
       "coachId": "陈教练",
-      "at": "2026-10-06T16:51:07.253Z",
-      "checkinAt": "2026-10-06T16:51:07.289Z"
+      "at": "2026-10-08T16:15:42.719Z",
+      "checkinAt": "2026-10-08T16:15:42.746Z"
     },
     {
       "id": "B103",
@@ -128,7 +128,7 @@
       "checkinChannel": null,
       "operatorId": null,
       "coachId": "陈教练",
-      "at": "2026-10-06T16:51:07.299Z"
+      "at": "2026-10-08T16:15:42.757Z"
     },
     {
       "id": "B104",
@@ -139,7 +139,7 @@
       "checkinChannel": null,
       "operatorId": null,
       "coachId": "陈教练",
-      "at": "2026-10-06T16:51:07.325Z"
+      "at": "2026-10-08T16:15:42.777Z"
     }
   ],
   "orders": [
@@ -151,7 +151,7 @@
       "paidAmount": 300,
       "status": "abnormal",
       "times": 0,
-      "at": "2026-10-06T16:51:07.358Z"
+      "at": "2026-10-08T16:15:42.802Z"
     }
   ],
   "consumptions": [
@@ -163,7 +163,7 @@
       "courseId": 11,
       "times": 1,
       "amount": 200,
-      "at": "2026-10-06T16:51:07.289Z"
+      "at": "2026-10-08T16:15:42.746Z"
     }
   ],
   "tasks": [
@@ -175,7 +175,7 @@
       "ruleCode": "SYS-R7",
       "hit": "近 30 天爽约率 50%",
       "status": "pending",
-      "dueAt": "2026-10-08T16:51:07.379Z"
+      "dueAt": "2026-10-10T16:15:42.818Z"
     },
     {
       "id": "T107",
@@ -185,7 +185,7 @@
       "ruleCode": "SYS-R7",
       "hit": "连续 4 周未到店",
       "status": "pending",
-      "dueAt": "2026-10-08T16:51:07.379Z"
+      "dueAt": "2026-10-10T16:15:42.818Z"
     },
     {
       "id": "T108",
@@ -195,7 +195,7 @@
       "ruleCode": "SYS-R7",
       "hit": "连续 4 周未到店",
       "status": "pending",
-      "dueAt": "2026-10-08T16:51:07.379Z"
+      "dueAt": "2026-10-10T16:15:42.818Z"
     },
     {
       "id": "T109",
@@ -205,104 +205,104 @@
       "ruleCode": "SYS-R9",
       "hit": "办卡 25 天到店 1 次",
       "status": "pending",
-      "dueAt": "2026-10-07T16:51:07.379Z"
+      "dueAt": "2026-10-09T16:15:42.818Z"
     }
   ],
   "notifications": [],
   "alerts": [
     {
-      "at": "2026-10-06T16:51:07.367Z",
+      "at": "2026-10-08T16:15:42.808Z",
       "type": "PAY_AMOUNT_MISMATCH",
       "order": "O105"
     }
   ],
   "audit": [
     {
-      "at": "2026-10-06T16:51:07.255Z",
+      "at": "2026-10-08T16:15:42.721Z",
       "action": "booking.create",
       "targetType": "booking",
       "targetId": "B101",
       "detail": "member=1 course=11"
     },
     {
-      "at": "2026-10-06T16:51:07.265Z",
+      "at": "2026-10-08T16:15:42.730Z",
       "action": "booking.reject",
       "targetType": "booking",
       "targetId": null,
       "detail": "SYS-R1 member=2"
     },
     {
-      "at": "2026-10-06T16:51:07.272Z",
+      "at": "2026-10-08T16:15:42.734Z",
       "action": "booking.reject",
       "targetType": "booking",
       "targetId": null,
       "detail": "SYS-R3 full course=12"
     },
     {
-      "at": "2026-10-06T16:51:07.278Z",
+      "at": "2026-10-08T16:15:42.740Z",
       "action": "booking.reject",
       "targetType": "booking",
       "targetId": null,
       "detail": "SYS-R3 conflict member=1"
     },
     {
-      "at": "2026-10-06T16:51:07.291Z",
+      "at": "2026-10-08T16:15:42.749Z",
       "action": "booking.checkin",
       "targetType": "booking",
       "targetId": "B101",
       "detail": "channel=scan"
     },
     {
-      "at": "2026-10-06T16:51:07.303Z",
+      "at": "2026-10-08T16:15:42.760Z",
       "action": "booking.create",
       "targetType": "booking",
       "targetId": "B103",
       "detail": "member=4 course=13"
     },
     {
-      "at": "2026-10-06T16:51:07.315Z",
+      "at": "2026-10-08T16:15:42.770Z",
       "action": "booking.cancel",
       "targetType": "booking",
       "targetId": "B103",
       "detail": null
     },
     {
-      "at": "2026-10-06T16:51:07.329Z",
+      "at": "2026-10-08T16:15:42.780Z",
       "action": "booking.create",
       "targetType": "booking",
       "targetId": "B104",
       "detail": "member=1 course=13"
     },
     {
-      "at": "2026-10-06T16:51:07.338Z",
+      "at": "2026-10-08T16:15:42.786Z",
       "action": "penalty.applied",
       "targetType": "member",
       "targetId": 1,
       "detail": "days=7"
     },
     {
-      "at": "2026-10-06T16:51:07.348Z",
+      "at": "2026-10-08T16:15:42.796Z",
       "action": "booking.noShow",
       "targetType": "booking",
       "targetId": "B104",
       "detail": "累计=3"
     },
     {
-      "at": "2026-10-06T16:51:07.352Z",
+      "at": "2026-10-08T16:15:42.798Z",
       "action": "booking.reject",
       "targetType": "booking",
       "targetId": null,
       "detail": "SYS-R4 member=1"
     },
     {
-      "at": "2026-10-06T16:51:07.371Z",
+      "at": "2026-10-08T16:15:42.812Z",
       "action": "order.abnormal",
       "targetType": "order",
       "targetId": "O105",
       "detail": "amountMismatch"
     },
     {
-      "at": "2026-10-06T16:51:07.383Z",
+      "at": "2026-10-08T16:15:42.821Z",
       "action": "job.riskScore",
       "targetType": "risk",
       "targetId": null,
@@ -310,7 +310,7 @@
     }
   ],
   "meta": {
-    "createdAt": "2026-10-06T16:51:07.226Z",
+    "createdAt": "2026-10-08T16:15:42.690Z",
     "version": "0.1.0"
   }
 }
