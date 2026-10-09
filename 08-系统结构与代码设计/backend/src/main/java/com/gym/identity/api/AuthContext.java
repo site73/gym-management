@@ -28,6 +28,27 @@ public final class AuthContext {
         return s;
     }
 
+    /** 要求教练角色 */
+    public static AuthSession requireCoach() {
+        AuthSession s = current();
+        if (!s.isCoach()) throw AuthException.forbidden("该操作仅限教练账号");
+        return s;
+    }
+
+    /**
+     * 归一化教练 ID：教练账号只能操作自己的课程。
+     *
+     * @param requested 前端传入的教练 ID（可为空）；门店后台可按教练筛选
+     */
+    public static Long effectiveCoachId(Long requested) {
+        AuthSession s = current();
+        if (s.isCoach()) {
+            if (s.coachId() == null) throw AuthException.forbidden("当前账号未绑定教练档案");
+            return s.coachId();
+        }
+        return requested;
+    }
+
     /** 要求管理员角色 */
     public static AuthSession requireAdmin() {
         AuthSession s = current();

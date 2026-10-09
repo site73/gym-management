@@ -92,9 +92,9 @@
   .content{flex:1;min-width:0;padding:16px;max-width:1120px}
 
   /* ---------- 登录页身份选择 ---------- */
-  .idpick{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:10px 0 2px}
-  .idpick button{width:auto;margin:0;padding:13px 6px;background:#fff;border:2px solid var(--line);color:var(--text);font-size:13px;border-radius:10px;line-height:1.4}
-  .idpick button .big{display:block;font-size:22px;margin-bottom:5px}
+  .idpick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 2px}
+  .idpick button{width:auto;margin:0;padding:12px 4px;background:#fff;border:2px solid var(--line);color:var(--text);font-size:12.5px;border-radius:10px;line-height:1.35}
+  .idpick button .big{display:block;font-size:20px;margin-bottom:4px}
   .idpick button.sel{border-color:var(--primary);background:var(--chip);color:var(--primary);font-weight:700}
   .login-step{font-size:12px;color:var(--muted);margin-top:14px}
 
@@ -111,6 +111,15 @@
   .searchbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
   .searchbar input{flex:1;min-width:160px}
   .hl{background:#fff3c4;border-radius:3px}
+  /* ---------- 分页 ---------- */
+  .pager{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--muted)}
+  .pager button.pg{background:var(--chip);color:var(--primary);border:0;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px}
+  .pager button.pg.on{background:var(--primary);color:#fff;font-weight:700}
+  .pager button.pg:disabled{opacity:.4;cursor:not-allowed}
+  /* ---------- 场馆卡 ---------- */
+  .venue-card{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;cursor:pointer}
+  .venue-card:hover{border-color:var(--primary)}
+  .venue-card.active{border-color:var(--primary);background:var(--chip)}
 </style>
 </head>
 <body>
@@ -129,6 +138,7 @@
         <button id="idMember" class="sel" onclick="pickIdentity('MEMBER')"><span class="big">&#127939;</span>会员</button>
         <button id="idManager" onclick="pickIdentity('MANAGER')"><span class="big">&#127978;</span>店长</button>
         <button id="idAdmin" onclick="pickIdentity('ADMIN')"><span class="big">&#9881;</span>管理员</button>
+        <button id="idCoach" onclick="pickIdentity('COACH')"><span class="big">&#127947;</span>教练</button>
       </div>
       <div class="login-step" id="idHint">当前身份：会员（进入会员端）</div>
 
@@ -326,8 +336,8 @@
               <option value="group">团课</option>
               <option value="pt">私教</option>
             </select>
-            <label for="cfCoach">教练 ID</label>
-            <input id="cfCoach" type="number" placeholder="101" style="width:100px">
+            <label for="cfCoach">教练</label>
+            <select id="cfCoach" style="min-width:150px"></select>
             <label for="cfRoom">场地</label>
             <input id="cfRoom" placeholder="A 厅" style="width:100px" maxlength="32">
             <label for="cfStart">开始</label>
@@ -362,6 +372,139 @@
         </div>
       </section>
 
+      <!-- ---------- 会员端：场地预约 ---------- -->
+      <section id="viewVenues" class="panel hidden">
+        <h2>场地预约</h2>
+        <div class="m">4 个私有场馆 + 1 个公共区域。私有场馆仅对有效会籍开放，单次最长 4 小时，同一场地时段不可重叠。</div>
+        <div class="searchbar">
+          <input id="venueSearch" placeholder="搜索场馆名称 / 编号" oninput="renderVenues()">
+          <button class="btn ghost" id="venueSearchClear" onclick="clearSearch('venueSearch', renderVenues)">清空</button>
+          <button class="btn ghost" onclick="loadVenues()">刷新</button>
+        </div>
+        <div id="venueList" class="m">加载中…</div>
+
+        <h2 style="margin-top:18px">选择时段并预约</h2>
+        <div class="m" id="venuePickHint">请先在上方的场馆卡片里点「选它」</div>
+        <div class="searchbar">
+          <label for="vbDate">日期</label><input id="vbDate" type="date">
+          <label for="vbStart">开始</label><input id="vbStart" type="time" value="10:00">
+          <label for="vbEnd">结束</label><input id="vbEnd" type="time" value="11:00">
+          <button class="btn" onclick="submitVenueBooking()">提交预约</button>
+        </div>
+        <div id="venueBookingMsg" class="m"></div>
+      </section>
+
+      <!-- ---------- 会员端：我的场地预约 ---------- -->
+      <section id="viewMyVenueBookings" class="panel hidden">
+        <h2>我的场地预约</h2>
+        <div class="m"><button class="btn ghost" onclick="loadMyVenueBookings()">刷新</button></div>
+        <div id="myVenueBookings" class="m">加载中…</div>
+      </section>
+
+      <!-- ---------- 教练端：我的课表 ---------- -->
+      <section id="viewCoachCourses" class="panel hidden">
+        <h2>我的课表</h2>
+        <div class="m" id="coachProfile">加载中…</div>
+        <div class="searchbar">
+          <input id="coachCourseSearch" placeholder="搜索课程名称 / 编号" oninput="renderCoachCourses()">
+          <button class="btn ghost" id="coachCourseClear" onclick="clearSearch('coachCourseSearch', renderCoachCourses)">清空</button>
+          <button class="btn ghost" onclick="loadCoachCourses()">刷新</button>
+        </div>
+        <div id="coachCourseBox" class="m">加载中…</div>
+      </section>
+
+      <!-- ---------- 教练端：学员名单 ---------- -->
+      <section id="viewCoachRoster" class="panel hidden">
+        <h2>学员名单</h2>
+        <div class="m">选择自己的一门课，查看该课报名学员；满员时可据此处点名与核销签到。</div>
+        <div class="searchbar">
+          <select id="coachRosterCourse"></select>
+          <button class="btn" onclick="loadCoachRosterTable()">查看名单</button>
+        </div>
+        <div id="coachRosterBox" class="m">未加载</div>
+      </section>
+
+      <!-- ---------- 门店后台：教练管理 ---------- -->
+      <section id="viewCoachAdmin" class="panel hidden">
+        <h2>教练管理</h2>
+        <div class="m">维护教练档案。教练账号：coach1 / coach2 / coach3，密码均为 123456。</div>
+        <div class="card" id="coachForm" style="padding:16px;background:var(--bg);border:1px solid var(--line)">
+          <div class="t" id="coachFormTitle">新增教练</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;align-items:center">
+            <label for="cfCoachCode">编号</label><input id="cfCoachCode" placeholder="K004" style="width:100px" maxlength="32">
+            <label for="cfCoachName">姓名</label><input id="cfCoachName" placeholder="孙教练" style="width:120px" maxlength="64">
+            <label for="cfCoachPhone">手机号</label><input id="cfCoachPhone" style="width:130px" maxlength="20">
+            <label for="cfCoachSpec">擅长</label><input id="cfCoachSpec" placeholder="拉伸放松" style="width:150px" maxlength="64">
+            <label for="cfCoachStatus">状态</label>
+            <select id="cfCoachStatus"><option value="active">在职</option><option value="leave">休假</option></select>
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn" onclick="submitCoach()">保存教练</button>
+            <button class="btn ghost" id="coachCancelBtn" onclick="closeCoachForm()" style="display:none">取消编辑</button>
+          </div>
+        </div>
+        <h2 style="margin-top:20px">教练列表</h2>
+        <div class="searchbar">
+          <input id="coachAdminSearch" placeholder="搜索教练姓名 / 编号 / 擅长项目" oninput="renderCoachAdmin()">
+          <button class="btn ghost" id="coachAdminClear" onclick="clearSearch('coachAdminSearch', renderCoachAdmin)">清空</button>
+          <button class="btn ghost" onclick="loadCoachAdmin()">刷新</button>
+        </div>
+        <div id="coachAdminBox" class="m">未加载</div>
+      </section>
+
+      <!-- ---------- 门店后台：场馆管理 ---------- -->
+      <section id="viewVenueAdmin" class="panel hidden">
+        <h2>场馆管理</h2>
+        <div class="m">共 5 处：4 个私有场馆 + 1 个公共区域。可调整容量、位置、费用与维护状态。</div>
+        <div class="card" id="venueForm" style="padding:16px;background:var(--bg);border:1px solid var(--line)">
+          <div class="t" id="venueFormTitle">新增场馆</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;align-items:center">
+            <label for="vfCode">编号</label><input id="vfCode" placeholder="V06" style="width:90px" maxlength="32">
+            <label for="vfName">名称</label><input id="vfName" placeholder="拉伸室" style="width:130px" maxlength="64">
+            <label for="vfType">类型</label>
+            <select id="vfType"><option value="private">私有场馆</option><option value="public">公共区域</option></select>
+            <label for="vfCap">容量</label><input id="vfCap" type="number" value="4" min="1" style="width:80px">
+            <label for="vfLoc">位置</label><input id="vfLoc" placeholder="二层东侧" style="width:110px" maxlength="64">
+            <label for="vfFee">时费</label><input id="vfFee" type="number" value="0" min="0" step="10" style="width:80px">
+            <label for="vfStatus">状态</label>
+            <select id="vfStatus"><option value="available">可用</option><option value="maintenance">维护中</option></select>
+          </div>
+          <div style="margin-top:12px">
+            <button class="btn" onclick="submitVenue()">保存场馆</button>
+            <button class="btn ghost" id="venueCancelBtn" onclick="closeVenueForm()" style="display:none">取消编辑</button>
+          </div>
+        </div>
+        <h2 style="margin-top:20px">场馆列表</h2>
+        <div class="searchbar">
+          <input id="venueAdminSearch" placeholder="搜索场馆名称 / 编号 / 位置" oninput="renderVenueAdmin()">
+          <button class="btn ghost" id="venueAdminClear" onclick="clearSearch('venueAdminSearch', renderVenueAdmin)">清空</button>
+          <button class="btn ghost" onclick="loadVenueAdmin()">刷新</button>
+        </div>
+        <div id="venueAdminBox" class="m">未加载</div>
+      </section>
+
+      <!-- ---------- 门店后台：场地预约管理 ---------- -->
+      <section id="viewVenueBookingAdmin" class="panel hidden">
+        <h2>场地预约管理</h2>
+        <div class="m">查看全部场地预约；也可为会员代约（会员账号可自助预约）。</div>
+        <div class="searchbar">
+          <select id="vbAdminVenueFilter" onchange="loadVenueBookingAdmin()"><option value="">全部场馆</option></select>
+          <button class="btn ghost" onclick="loadVenueBookingAdmin()">刷新</button>
+        </div>
+        <div id="venueBookingAdminBox" class="m">未加载</div>
+
+        <h2 style="margin-top:18px">代客预约场地</h2>
+        <div class="searchbar">
+          <select id="vbAdminMember"></select>
+          <select id="vbAdminVenue"></select>
+          <input id="vbAdminDate" type="date">
+          <input id="vbAdminStart" type="time" value="10:00">
+          <input id="vbAdminEnd" type="time" value="11:00">
+          <button class="btn" onclick="staffBookVenue()">代客预约</button>
+        </div>
+        <div id="vbAdminMsg" class="m"></div>
+      </section>
+
       <!-- ---------- 接口调用日志（独立页面，仅门店后台） ---------- -->
       <section id="viewLog" class="panel hidden">
         <h2>接口调用日志（真实请求）<span class="chip" id="logCount">0 条</span></h2>
@@ -382,7 +525,7 @@
 
 <script>
 const $ = id => document.getElementById(id);
-const state = { token: null, user: null, members: [], courses: [], memberCourses: [], adminCourses: [], bookings: [] };
+const state = { token: null, user: null, members: [], courses: [], memberCourses: [], adminCourses: [], bookings: [], coaches: [], venues: [] };
 // 门店后台当前选中的会员（用于代客约课，实现「会员 ↔ 课程余位」联动）
 let pickedMemberId = null;
 const STATUS_CN = { booked: '已约', checked_in: '已签到', no_show: '爽约', cancelled: '已取消' };
@@ -525,27 +668,44 @@ async function enterApp() {
 
   const u = state.user;
   const isStaff = u.role === 'STAFF';
+  const isCoach = u.role === 'COACH';
   $('userName').textContent = `${u.displayName}（${u.username}）`;
-  $('roleTag').textContent = isStaff ? (u.admin ? '门店后台 · 管理员' : '门店后台') : '会员端';
+  $('roleTag').textContent = isStaff ? (u.admin ? '门店后台 · 管理员' : '门店后台')
+                          : isCoach ? '教练端' : '会员端';
 
   renderSidebar();
-  await navTo(isStaff ? 'booking' : 'memberInfo');
+  await navTo(isStaff ? 'booking' : isCoach ? 'coachCourses' : 'memberInfo');
 }
 
 /* ================= 左侧导航（每个板块一个独立页面） ================= */
 const ALL_VIEWS = ['viewMember','viewMemberCourses','viewMemberBookings',
+                   'viewVenues','viewMyVenueBookings',
+                   'viewCoachCourses','viewCoachRoster',
                    'viewBooking','viewPay','viewRisk','viewPerf','viewReport',
-                   'viewCourse','viewSystem','viewLog'];
+                   'viewCourse','viewCoachAdmin','viewVenueAdmin','viewVenueBookingAdmin',
+                   'viewSystem','viewLog'];
 
 /** 当前登录者可见的导航项 */
 function navItems() {
   const u = state.user || {};
   const staff = u.role === 'STAFF';
+  const coach = u.role === 'COACH';
+  const member = !staff && !coach;
   const admin = staff && !!u.admin;
   const items = [
-    { key:'memberInfo',     view:'viewMember',         label:'我的信息',   icon:'&#128100;', show:!staff, enter: loadMyInfo },
-    { key:'memberCourses',  view:'viewMemberCourses',  label:'课程与余位', icon:'&#128218;', show:!staff, enter: loadMemberCourses },
-    { key:'memberBookings', view:'viewMemberBookings', label:'我的预约',   icon:'&#128197;', show:!staff, enter: loadMyBookings },
+    /* ---- 会员端 ---- */
+    { key:'memberInfo',     view:'viewMember',         label:'我的信息',   icon:'&#128100;', show:member, enter: loadMyInfo },
+    { key:'memberCourses',  view:'viewMemberCourses',  label:'课程与余位', icon:'&#128218;', show:member, enter: loadMemberCourses },
+    { key:'memberBookings', view:'viewMemberBookings', label:'我的预约',   icon:'&#128197;', show:member, enter: loadMyBookings },
+    { key:'venues',         view:'viewVenues',         label:'场地预约',   icon:'&#127967;', show:member, enter: loadVenues },
+    { key:'myVenueBookings',view:'viewMyVenueBookings',label:'我的场地预约',icon:'&#128198;', show:member, enter: loadMyVenueBookings },
+
+    /* ---- 教练端 ---- */
+    { key:'coachCourses', view:'viewCoachCourses', label:'我的课表',   icon:'&#128203;', show:coach,
+      enter: async () => { await loadCoachProfile(); await loadCoachCourses(); } },
+    { key:'coachRoster',  view:'viewCoachRoster',  label:'学员名单',   icon:'&#128101;', show:coach, enter: loadCoachRoster },
+
+    /* ---- 门店后台 ---- */
     { key:'booking', view:'viewBooking', label:'约课管理',   icon:'&#128203;', show:staff,
       enter: async () => { await loadMembers(); await loadCourses(); await loadBookings(); } },
     { key:'pay',    view:'viewPay',    label:'收费与对账', icon:'&#128176;', show:staff,
@@ -555,16 +715,20 @@ function navItems() {
     { key:'report', view:'viewReport', label:'经营摘要',   icon:'&#128202;', show:staff,
       enter: async () => { await loadSummary(); await loadAudit(); } },
   ];
-  // 排课对管理员与店长均开放；数据重置与接口日志仅门店后台
+  // 排课、教练档案、场馆维护对管理员与店长均开放
   if (staff) items.push({ key:'course', view:'viewCourse', label:'课程管理', icon:'&#127890;', show:true, enter: loadAdminCourses });
+  if (staff) items.push({ key:'coachAdmin', view:'viewCoachAdmin', label:'教练管理', icon:'&#127947;', show:true, enter: loadCoachAdmin });
+  if (staff) items.push({ key:'venueAdmin', view:'viewVenueAdmin', label:'场馆管理', icon:'&#127967;', show:true, enter: loadVenueAdmin });
+  if (staff) items.push({ key:'venueBookingAdmin', view:'viewVenueBookingAdmin', label:'场地预约管理', icon:'&#128198;', show:true, enter: loadVenueBookingAdmin });
   if (admin) items.push({ key:'system', view:'viewSystem', label:'系统管理', icon:'&#9881;',   show:true, enter: async () => {} });
   if (staff) items.push({ key:'log',    view:'viewLog',    label:'接口日志', icon:'&#128220;', show:true, enter: async () => {} });
   return items;
 }
 
 function renderSidebar() {
-  const staff = state.user && state.user.role === 'STAFF';
-  $('sidebar').innerHTML = `<div class="navtitle">${staff ? '门店后台' : '会员中心'} · 功能导航</div>`
+  const role = state.user && state.user.role;
+  const scope = role === 'STAFF' ? '门店后台' : role === 'COACH' ? '教练端' : '会员中心';
+  $('sidebar').innerHTML = `<div class="navtitle">${scope} · 功能导航</div>`
     + navItems().filter(i => i.show).map(i =>
         `<button id="nav-${i.key}" onclick="navTo('${i.key}')">`
         + `<span class="ic">${i.icon}</span>${i.label}</button>`).join('');
@@ -590,24 +754,26 @@ function closeModal() { $('modalMask').classList.add('hidden'); $('modalBox').in
 
 /* ================= 登录身份选择 ================= */
 let loginIdentity = 'MEMBER';
-const IDENTITY_CN = { MEMBER: '会员', MANAGER: '店长', ADMIN: '管理员' };
+const IDENTITY_CN = { MEMBER: '会员', MANAGER: '店长', ADMIN: '管理员', COACH: '教练' };
 
 function pickIdentity(id) {
   loginIdentity = id;
   $('idMember').classList.toggle('sel', id === 'MEMBER');
   $('idManager').classList.toggle('sel', id === 'MANAGER');
   $('idAdmin').classList.toggle('sel', id === 'ADMIN');
+  $('idCoach').classList.toggle('sel', id === 'COACH');
   $('idHint').textContent = '当前身份：' + IDENTITY_CN[id]
-      + (id === 'MEMBER' ? '（进入会员端）' : '（进入门店后台）');
+      + (id === 'MEMBER' ? '（进入会员端）' : id === 'COACH' ? '（进入教练端）' : '（进入门店后台）');
   $('loginMsg').textContent = '';
 }
 
 /** 身份与账号角色是否匹配 */
 function identityMatches(user, identity) {
-  const staff = user && user.role === 'STAFF';
-  if (identity === 'MEMBER') return !staff;
-  if (identity === 'MANAGER') return !!staff;
-  return !!staff && !!user.admin;
+  const role = user && user.role;
+  if (identity === 'MEMBER') return role === 'MEMBER';
+  if (identity === 'COACH') return role === 'COACH';
+  if (identity === 'MANAGER') return role === 'STAFF';   // 管理员也是门店后台
+  return role === 'STAFF' && !!user.admin;
 }
 
 /* ================= 会员端 ================= */
@@ -648,15 +814,17 @@ function renderMemberCourses() {
     $('memberCourses').innerHTML = '没有匹配「' + kw + '」的课程';
     return;
   }
+  const pg = pageOf(shown, 'memberCourses');
+  PG_RENDER.memberCourses = renderMemberCourses;
   $('memberCourses').innerHTML =
     `<div class="m">共 ${shown.length} 门${kw ? '（全部 ' + list.length + ' 门）' : ''}</div>`
-    + shown.map(c => `
+    + pg.slice.map(c => `
     <div class="card">
       <div class="t">${c.name} · ${(c.startTime || '').slice(11, 16)} <span class="chip">${c.code || ''}</span></div>
       <div class="m">教练：${c.coachId || '待定'} ｜ 场地：${c.room || '—'} ｜ 剩余名额：${c.remaining}/${c.capacity}
         ${c.remaining <= 0 ? '<span class="chip err">已满</span>' : ''}</div>
       <div><button class="btn" ${c.remaining > 0 ? '' : 'disabled'} onclick="memberBook('${c.id}')">选课</button></div>
-    </div>`).join('');
+    </div>`).join('') + pg.bar;
 }
 async function memberBook(courseId) {
   // 自愿选课：走专用入口，服务端固定作用于本人
@@ -801,9 +969,11 @@ function renderCourses() {
   const picked = pickedMemberId
       ? state.members.find(x => String(x.id) === String(pickedMemberId)) : null;
 
+  const pgC = pageOf(shownCourses, 'staffCourses');
+  PG_RENDER.staffCourses = renderCourses;
   $('courseBox').innerHTML = `<div class="m">共 ${shownCourses.length} 门`
       + (kw ? '（全部 ' + state.courses.length + ' 门）' : '') + '</div>'
-      + shownCourses.map(c => {
+      + pgC.slice.map(c => {
     const ids = roster[c.id] || [];
     const names = ids.map(i => nameOf[i] || ('#' + i)).join('、');
     return `<div class="card">
@@ -813,9 +983,10 @@ function renderCourses() {
       <div class="roster">已报名（${ids.length}）：${names || '暂无'}</div>
       <div>${picked
         ? `<button class="btn" ${c.remaining > 0 ? '' : 'disabled'} onclick="staffBook('${picked.id}','${c.id}')">为 ${picked.name} 约课</button>`
-        : '<span class="m">请先在上方选择会员</span>'}</div>
+        : '<span class="m">请先在上方选择会员</span>'}
+        <button class="btn ghost" onclick="showCourseRoster('${c.id}','${c.name}')">查看名单</button></div>
     </div>`;
-  }).join('');
+  }).join('') + pgC.bar;
 }
 function fillPredictCourses() {
   const sel = $('predictCourse');
@@ -941,7 +1112,22 @@ let editingCourseId = null;
 async function loadAdminCourses() {
   const r = await api('GET', '/api/courses');
   state.adminCourses = Array.isArray(r.data) ? r.data : [];
+  await fillCoachSelect();
   renderAdminCourses();
+}
+
+/** 排课表单的教练下拉（原来只能手填数字 ID） */
+async function fillCoachSelect() {
+  const sel = $('cfCoach');
+  if (!sel) return;
+  if (!state.coaches || state.coaches.length === 0) {
+    const r = await api('GET', '/api/coaches');
+    state.coaches = Array.isArray(r.data) ? r.data : [];
+  }
+  if (sel.options.length === 0) {
+    sel.innerHTML = state.coaches.map(c =>
+      `<option value="${c.id}">${c.name}${c.specialty ? '（' + c.specialty + '）' : ''}</option>`).join('');
+  }
 }
 
 /** 课程维护列表（支持按名称 / 编号 / 教练 / 状态搜索） */
@@ -954,11 +1140,13 @@ function renderAdminCourses() {
     $('adminCourseBox').innerHTML = '没有匹配「' + kw + '」的课程';
     return;
   }
+  const pgA = pageOf(shown, 'adminCourses');
+  PG_RENDER.adminCourses = renderAdminCourses;
   $('adminCourseBox').innerHTML =
     `<div class="m">共 ${shown.length} 门${kw ? '（全部 ' + list.length + ' 门）' : ''}</div>`
     + `<table>
     <tr><th>ID</th><th>编号</th><th>名称</th><th>类型</th><th>时间</th><th>已约/容量</th><th>状态</th><th>操作</th></tr>
-    ${shown.map(c => {
+    ${pgA.slice.map(c => {
       const off = 'cancelled' === c.status;
       const cls = off ? 'err' : (c.remaining > 0 ? 'ok' : 'warn');
       const label = 'cancelled' === c.status ? '已下架'
@@ -971,13 +1159,14 @@ function renderAdminCourses() {
         <td>${c.bookedCount}/${c.capacity}</td>
         <td><span class="chip ${cls}">${label}</span></td>
         <td>
+          <button class="btn ghost" onclick="showCourseRoster('${c.id}','${c.name}')">名单</button>
           <button class="btn ghost" onclick="startEdit('${c.id}')">编辑</button>
           ${off
             ? `<button class="btn" onclick="publishCourse('${c.id}')">上架</button>`
             : `<button class="btn warn" onclick="offlineCourse('${c.id}')">下架</button>`}
         </td></tr>`;
     }).join('')}
-  </table>`;
+  </table>` + pgA.bar;
 }
 
 function showCourseForm(course) {
@@ -987,7 +1176,7 @@ function showCourseForm(course) {
   $('cfCode').disabled = !!editingCourseId;      // 编号建后不可改
   $('cfName').value = course && course.name ? course.name : '';
   $('cfType').value = course && course.type ? course.type : 'group';
-  $('cfCoach').value = course && course.coachId ? course.coachId : '';
+  $('cfCoach').value = course && course.coachId ? course.coachId : '';   // 下拉已由 fillCoachSelect 填充
   $('cfRoom').value = course && course.room ? course.room : '';
   $('cfStart').value = course && course.startTime ? String(course.startTime).slice(0, 16) : '';
   $('cfEnd').value = course && course.endTime ? String(course.endTime).slice(0, 16) : '';
@@ -1175,6 +1364,437 @@ async function resetDemoData() {
     showLogin('登录已过期，请重新登录');
   }
 })();
+
+/* ================= 分页（课程与场馆列表共用） ================= */
+const PAGE_SIZE = 6;
+const pgState = { memberCourses: 1, staffCourses: 1, adminCourses: 1, venues: 1, venueAdmin: 1, coachCourses: 1, coachAdmin: 1 };
+const PG_RENDER = {};
+
+function gotoPage(key, n) {
+  pgState[key] = Number(n) || 1;   // 内联处理器参数统一为字符串，这里归一化
+  const f = PG_RENDER[key];
+  if (f) f();
+}
+
+/** 取当前页数据并生成分页条 */
+function pageOf(list, key) {
+  const total = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+  if (pgState[key] > total) pgState[key] = total;
+  const page = pgState[key] || 1;
+  const slice = list.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  let btns = '';
+  for (let i = 1; i <= total; i++) {
+    btns += `<button class="pg ${i === page ? 'on' : ''}" onclick="gotoPage('${key}','${i}')">${i}</button>`;
+  }
+  const bar = total <= 1 ? '' :
+    `<div class="pager">共 ${list.length} 条 · 第 ${page}/${total} 页
+      <button class="pg" ${page <= 1 ? 'disabled' : ''} onclick="gotoPage('${key}','${page - 1}')">上一页</button>
+      ${btns}
+      <button class="pg" ${page >= total ? 'disabled' : ''} onclick="gotoPage('${key}','${page + 1}')">下一页</button>
+    </div>`;
+  return { slice, bar, page, total, all: list.length };
+}
+
+/* ================= 课程报名名单（门店 / 教练可查） ================= */
+async function showCourseRoster(courseId, courseName) {
+  const r = await api('GET', `/api/courses/${courseId}/bookings`);
+  if (r.status !== 200) {
+    alert('无法读取报名名单：' + ((r.data && r.data.reason) || ('HTTP ' + r.status)));
+    return;
+  }
+  const list = Array.isArray(r.data) ? r.data : [];
+  const rows = list.length === 0
+    ? '<div class="m" style="padding:16px 0">该课程暂无报名</div>'
+    : `<table>
+        <tr><th>#</th><th>会员</th><th>编号</th><th>状态</th><th>签到渠道</th><th>约课时间</th></tr>
+        ${list.map((b, i) => {
+          const cls = b.status === 'checked_in' ? 'ok' : (b.status === 'no_show' || b.status === 'cancelled') ? 'err' : '';
+          const ch = b.checkinChannel === 'front_desk' ? '前台代签' : (b.checkinChannel ? '扫码' : '—');
+          return `<tr>
+            <td>${i + 1}</td><td>${b.memberName}</td><td>${b.memberNo || '—'}</td>
+            <td><span class="chip ${cls}">${STATUS_CN[b.status] || b.status}</span></td>
+            <td>${ch}</td>
+            <td>${String(b.bookedAt || '').slice(5, 16).replace('T', ' ')}</td>
+          </tr>`;
+        }).join('')}
+      </table>`;
+  openModal(
+    '<h3>报名名单</h3>'
+    + '<div style="font-size:12px;color:var(--muted)">' + courseName + '　共 ' + list.length + ' 人'
+    + (list.length > 0 ? '（前 3 位：' + list.slice(0, 3).map(x => x.memberName).join('、') + '…）' : '') + '</div>'
+    + '<div style="max-height:360px;overflow:auto;text-align:left;margin-top:10px">' + rows + '</div>'
+    + '<div class="actions"><button class="btn ghost" onclick="closeModal()">关闭</button></div>'
+  );
+}
+
+/* ================= 会员端：场地预约 ================= */
+const VENUE_STATUS_CN = { booked: '已预约', cancelled: '已取消', finished: '已结束' };
+let venueAll = [];
+let pickedVenueId = null;
+
+async function loadVenues() {
+  const r = await api('GET', '/api/venues');
+  venueAll = Array.isArray(r.data) ? r.data : [];
+  const d = new Date(Date.now() + 86400000);
+  if ($('vbDate') && !$('vbDate').value) $('vbDate').value = d.toISOString().slice(0, 10);
+  renderVenues();
+}
+
+function renderVenues() {
+  if (venueAll.length === 0) { $('venueList').innerHTML = '暂无场馆'; return; }
+  const kw = norm(($('venueSearch').value || '').trim());
+  const shown = venueAll.filter(v => !kw || [v.name, v.code, v.location, v.typeCn].map(norm).join(' ').includes(kw));
+  if (shown.length === 0) { $('venueList').innerHTML = '没有匹配「' + kw + '」的场馆'; return; }
+  const p = pageOf(shown, 'venues');
+  PG_RENDER.venues = renderVenues;
+  $('venueList').innerHTML = p.slice.map(v => {
+    const cls = pickedVenueId === v.id ? 'active' : '';
+    const fee = v.hourlyFee && Number(v.hourlyFee) > 0 ? ('¥' + v.hourlyFee + '/小时') : '免费';
+    const typeCls = v.isPublic ? 'ok' : 'warn';
+    return `<div class="venue-card ${cls}" onclick="pickVenue('${v.id}')">
+      <div class="t">${v.name} <span class="chip">${v.code}</span>
+        <span class="chip ${typeCls}">${v.typeCn}</span>
+        ${v.status !== 'available' ? '<span class="chip err">维护中</span>' : ''}</div>
+      <div class="m">容量 ${v.capacity} 人 ｜ ${v.location || '—'} ｜ ${fee}</div>
+      <div style="margin-top:6px"><button class="btn ghost">选它</button></div>
+    </div>`;
+  }).join('') + p.bar;
+}
+
+function pickVenue(id) {
+  pickedVenueId = id;
+  const v = venueAll.find(x => String(x.id) === String(id));
+  $('venuePickHint').textContent = v
+      ? '已选择：' + v.name + '（' + v.typeCn + '，容量 ' + v.capacity + ' 人）—— 选择日期与时段后提交'
+      : '请先在上方的场馆卡片里点「选它」';
+  renderVenues();
+}
+
+async function submitVenueBooking() {
+  const box = $('venueBookingMsg');
+  if (!pickedVenueId) { box.innerHTML = '<span class="chip err">请先选择场馆</span>'; return; }
+  const d = $('vbDate').value, s = $('vbStart').value, e = $('vbEnd').value;
+  if (!d || !s || !e) { box.innerHTML = '<span class="chip err">请填写日期与起止时间</span>'; return; }
+  const r = await api('POST', '/api/venue-bookings',
+      { venueId: Number(pickedVenueId), startTime: d + 'T' + s + ':00', endTime: d + 'T' + e + ':00' });
+  if (r.status === 200) {
+    box.innerHTML = '<span class="chip ok">预约成功</span> ' + r.data.venueName + ' '
+      + String(r.data.startTime).slice(5, 16).replace('T', ' ');
+    pickedVenueId = null;
+    $('venuePickHint').textContent = '请先在上方的场馆卡片里点「选它」';
+    await renderVenues();
+  } else {
+    box.innerHTML = '<span class="chip err">预约失败</span> ' + ((r.data && r.data.reason) || ('HTTP ' + r.status));
+  }
+}
+
+async function loadMyVenueBookings() {
+  const r = await api('GET', '/api/venue-bookings');
+  const list = Array.isArray(r.data) ? r.data : [];
+  if (list.length === 0) { $('myVenueBookings').innerHTML = '暂无场地预约'; return; }
+  $('myVenueBookings').innerHTML = list.map(b => {
+    const can = b.status === 'booked';
+    const cls = b.status === 'booked' ? 'ok' : 'err';
+    return `<div class="card">
+      <div class="t">${b.venueName} <span class="chip">${b.venueType === 'public' ? '公共区域' : '私有场馆'}</span></div>
+      <div class="m">时间：${String(b.startTime).slice(5, 16).replace('T', ' ')} ~ ${String(b.endTime).slice(11, 16)}
+        ｜状态：<span class="chip ${cls}">${VENUE_BOOKING_CN[b.status] || b.status}</span>
+        ｜来源：${b.createdBy ? '门店代约' : '会员自助'}</div>
+      <div><button class="btn warn" ${can ? '' : 'disabled'} onclick="cancelMyVenueBooking('${b.id}')">取消预约</button></div>
+    </div>`;
+  }).join('');
+}
+
+async function cancelMyVenueBooking(id) {
+  const r = await api('POST', `/api/venue-bookings/${id}/cancel`, {});
+  if (r.status === 200) { alert('已取消场地预约'); }
+  else { alert('取消失败：' + ((r.data && r.data.reason) || '')); }
+  await loadMyVenueBookings();
+}
+
+/* ================= 教练端 ================= */
+let coachCourseAll = [];
+
+async function loadCoachProfile() {
+  const r = await api('GET', '/api/coaches/me');
+  $('coachProfile').innerHTML = (r.status === 200 && r.data)
+    ? `<span class="chip ok">${r.data.name}</span> 编号 ${r.data.code}
+       ｜擅长：${r.data.specialty || '—'}｜状态：${r.data.status === 'active' ? '在职' : '休假'}
+       ｜联系电话：${r.data.phone || '—'}`
+    : '教练档案加载失败';
+}
+
+async function loadCoachCourses() {
+  const r = await api('GET', '/api/courses');
+  const all = Array.isArray(r.data) ? r.data : [];
+  const me = state.user && state.user.coachId;
+  coachCourseAll = all.filter(c => String(c.coachId) === String(me));
+  renderCoachCourses();
+  // 学员名单下拉同步
+  const sel = $('coachRosterCourse');
+  if (sel) {
+    sel.innerHTML = coachCourseAll.length === 0
+      ? '<option value="">（暂无排课）</option>'
+      : coachCourseAll.map(c => `<option value="${c.id}">${c.name} · ${String(c.startTime).slice(5, 16).replace('T', ' ')}</option>`).join('');
+  }
+}
+
+function renderCoachCourses() {
+  if (coachCourseAll.length === 0) { $('coachCourseBox').innerHTML = '暂无排课'; return; }
+  const kw = norm(($('coachCourseSearch').value || '').trim());
+  const shown = coachCourseAll.filter(c => matchCourse(c, kw));
+  if (shown.length === 0) { $('coachCourseBox').innerHTML = '没有匹配「' + kw + '」的课程'; return; }
+  const p = pageOf(shown, 'coachCourses');
+  PG_RENDER.coachCourses = renderCoachCourses;
+  $('coachCourseBox').innerHTML = p.slice.map(c => `
+    <div class="card">
+      <div class="t">${c.name} <span class="chip">${c.code}</span></div>
+      <div class="m">时间：${String(c.startTime).slice(0, 16).replace('T', ' ')}
+        ｜场地：${c.room || '—'}｜已约 ${c.bookedCount}/${c.capacity}
+        ${c.remaining <= 0 ? '<span class="chip err">已满</span>' : '<span class="chip ok">余 ' + c.remaining + '</span>'}</div>
+      <div>
+        <button class="btn ghost" onclick="showCourseRoster('${c.id}','${c.name}')">查看学员名单</button>
+      </div>
+    </div>`).join('') + p.bar;
+}
+
+async function loadCoachRoster() {
+  await loadCoachCourses();
+  $('coachRosterBox').innerHTML = '选择课程后点「查看名单」';
+}
+
+async function loadCoachRosterTable() {
+  const cid = $('coachRosterCourse').value;
+  if (!cid) { $('coachRosterBox').innerHTML = '暂无排课'; return; }
+  const c = coachCourseAll.find(x => String(x.id) === String(cid));
+  const r = await api('GET', `/api/courses/${cid}/bookings`);
+  if (r.status !== 200) {
+    $('coachRosterBox').innerHTML = '<span class="chip err">读取失败</span> ' + ((r.data && r.data.reason) || '');
+    return;
+  }
+  const list = Array.isArray(r.data) ? r.data : [];
+  if (list.length === 0) { $('coachRosterBox').innerHTML = '该课程暂无报名'; return; }
+  $('coachRosterBox').innerHTML = `<div class="m">${c ? c.name : ''}　共 ${list.length} 人</div>
+    <table>
+      <tr><th>#</th><th>会员</th><th>编号</th><th>状态</th><th>操作</th></tr>
+      ${list.map((b, i) => {
+        const can = b.status === 'booked';
+        return `<tr>
+          <td>${i + 1}</td><td>${b.memberName}</td><td>${b.memberNo || '—'}</td>
+          <td><span class="chip ${b.status === 'checked_in' ? 'ok' : (b.status === 'no_show' || b.status === 'cancelled') ? 'err' : ''}">${STATUS_CN[b.status] || b.status}</span></td>
+          <td><button class="btn ghost" ${can ? '' : 'disabled'} onclick="coachCheckin('${b.id}')">核销签到</button></td>
+        </tr>`;
+      }).join('')}
+    </table>`;
+}
+
+async function coachCheckin(bookingId) {
+  const r = await api('POST', `/api/bookings/${bookingId}/checkin`, {});
+  if (r.status === 204) alert('核销成功');
+  else alert('核销失败：' + ((r.data && r.data.reason) || ('HTTP ' + r.status)));
+  await loadCoachRosterTable();
+}
+
+/* ================= 门店：教练管理 ================= */
+let coachAdminAll = [];
+let editingCoachId = null;
+
+async function loadCoachAdmin() {
+  const r = await api('GET', '/api/coaches');
+  coachAdminAll = Array.isArray(r.data) ? r.data : [];
+  renderCoachAdmin();
+}
+
+function renderCoachAdmin() {
+  if (coachAdminAll.length === 0) { $('coachAdminBox').innerHTML = '暂无教练'; return; }
+  const kw = norm(($('coachAdminSearch').value || '').trim());
+  const shown = coachAdminAll.filter(c =>
+      !kw || [c.name, c.code, c.specialty, c.phone].map(norm).join(' ').includes(kw));
+  if (shown.length === 0) { $('coachAdminBox').innerHTML = '没有匹配「' + kw + '」的教练'; return; }
+  const p = pageOf(shown, 'coachAdmin');
+  PG_RENDER.coachAdmin = renderCoachAdmin;
+  $('coachAdminBox').innerHTML = `<table>
+    <tr><th>编号</th><th>姓名</th><th>擅长项目</th><th>手机号</th><th>状态</th><th>登录账号</th><th>操作</th></tr>
+    ${p.slice.map(c => `<tr>
+      <td>${c.code}</td><td>${c.name}</td><td>${c.specialty || '—'}</td><td>${c.phone || '—'}</td>
+      <td><span class="chip ${c.status === 'active' ? 'ok' : 'warn'}">${c.statusCn}</span></td>
+      <td>${c.userId ? '<span class="chip ok">已开通</span>' : '<span class="chip">未开通</span>'}</td>
+      <td><button class="btn ghost" onclick="startEditCoach('${c.id}')">编辑</button></td>
+    </tr>`).join('')}
+  </table>` + p.bar;
+}
+
+function startEditCoach(id) {
+  const c = coachAdminAll.find(x => String(x.id) === String(id));
+  if (!c) return;
+  editingCoachId = c.id;
+  $('coachFormTitle').textContent = '编辑教练 ' + c.code;
+  $('cfCoachCode').value = c.code;
+  $('cfCoachCode').disabled = true;
+  $('cfCoachName').value = c.name;
+  $('cfCoachPhone').value = c.phone || '';
+  $('cfCoachSpec').value = c.specialty || '';
+  $('cfCoachStatus').value = c.status;
+  $('coachCancelBtn').style.display = '';
+}
+
+function closeCoachForm() {
+  editingCoachId = null;
+  $('coachFormTitle').textContent = '新增教练';
+  $('cfCoachCode').value = ''; $('cfCoachCode').disabled = false;
+  $('cfCoachName').value = ''; $('cfCoachPhone').value = '';
+  $('cfCoachSpec').value = ''; $('cfCoachStatus').value = 'active';
+  $('coachCancelBtn').style.display = 'none';
+}
+
+async function submitCoach() {
+  const code = $('cfCoachCode').value.trim(), name = $('cfCoachName').value.trim();
+  if (!name) { alert('请填写教练姓名'); return; }
+  const body = { code: code, name: name, phone: $('cfCoachPhone').value.trim(),
+                 specialty: $('cfCoachSpec').value.trim(), status: $('cfCoachStatus').value };
+  const r = editingCoachId
+      ? await api('PUT', `/api/coaches/${editingCoachId}`, body)
+      : await api('POST', '/api/coaches', body);
+  if (r.status === 200) alert(editingCoachId ? '教练已更新' : '教练已新增');
+  else alert('保存失败：' + ((r.data && r.data.reason) || ''));
+  closeCoachForm();
+  await loadCoachAdmin();
+}
+
+/* ================= 门店：场馆管理 ================= */
+let venueAdminAll = [];
+let editingVenueId = null;
+
+async function loadVenueAdmin() {
+  const r = await api('GET', '/api/venues');
+  venueAdminAll = Array.isArray(r.data) ? r.data : [];
+  // 同步「场地预约管理」的筛选下拉
+  const f = $('vbAdminVenueFilter');
+  if (f) f.innerHTML = '<option value="">全部场馆</option>'
+      + venueAdminAll.map(v => `<option value="${v.id}">${v.name}</option>`).join('');
+  const f2 = $('vbAdminVenue');
+  if (f2) f2.innerHTML = venueAdminAll.map(v => `<option value="${v.id}">${v.name}（${v.typeCn}）</option>`).join('');
+  renderVenueAdmin();
+}
+
+function renderVenueAdmin() {
+  if (venueAdminAll.length === 0) { $('venueAdminBox').innerHTML = '暂无场馆'; return; }
+  const kw = norm(($('venueAdminSearch').value || '').trim());
+  const shown = venueAdminAll.filter(v =>
+      !kw || [v.name, v.code, v.location, v.typeCn].map(norm).join(' ').includes(kw));
+  if (shown.length === 0) { $('venueAdminBox').innerHTML = '没有匹配「' + kw + '」的场馆'; return; }
+  const p = pageOf(shown, 'venueAdmin');
+  PG_RENDER.venueAdmin = renderVenueAdmin;
+  $('venueAdminBox').innerHTML = `<table>
+    <tr><th>编号</th><th>名称</th><th>类型</th><th>容量</th><th>位置</th><th>时费</th><th>状态</th><th>操作</th></tr>
+    ${p.slice.map(v => `<tr>
+      <td>${v.code}</td><td>${v.name}</td>
+      <td><span class="chip ${v.isPublic ? 'ok' : 'warn'}">${v.typeCn}</span></td>
+      <td>${v.capacity} 人</td><td>${v.location || '—'}</td>
+      <td>${Number(v.hourlyFee) > 0 ? '¥' + v.hourlyFee : '免费'}</td>
+      <td><span class="chip ${v.status === 'available' ? 'ok' : 'err'}">${v.statusCn}</span></td>
+      <td><button class="btn ghost" onclick="startEditVenue('${v.id}')">编辑</button></td>
+    </tr>`).join('')}
+  </table>` + p.bar;
+}
+
+function startEditVenue(id) {
+  const v = venueAdminAll.find(x => String(x.id) === String(id));
+  if (!v) return;
+  editingVenueId = v.id;
+  $('venueFormTitle').textContent = '编辑场馆 ' + v.code;
+  $('vfCode').value = v.code; $('vfCode').disabled = true;
+  $('vfName').value = v.name;
+  $('vfType').value = v.type;
+  $('vfCap').value = v.capacity;
+  $('vfLoc').value = v.location || '';
+  $('vfFee').value = Number(v.hourlyFee) || 0;
+  $('vfStatus').value = v.status;
+  $('venueCancelBtn').style.display = '';
+}
+
+function closeVenueForm() {
+  editingVenueId = null;
+  $('venueFormTitle').textContent = '新增场馆';
+  $('vfCode').value = ''; $('vfCode').disabled = false;
+  $('vfName').value = ''; $('vfType').value = 'private';
+  $('vfCap').value = 4; $('vfLoc').value = ''; $('vfFee').value = 0;
+  $('vfStatus').value = 'available';
+  $('venueCancelBtn').style.display = 'none';
+}
+
+async function submitVenue() {
+  const code = $('vfCode').value.trim(), name = $('vfName').value.trim();
+  if (!name) { alert('请填写场馆名称'); return; }
+  const body = { code: code, name: name, type: $('vfType').value,
+                 capacity: Number($('vfCap').value || 0), location: $('vfLoc').value.trim(),
+                 hourlyFee: Number($('vfFee').value || 0), status: $('vfStatus').value };
+  const r = editingVenueId
+      ? await api('PUT', `/api/venues/${editingVenueId}`, body)
+      : await api('POST', '/api/venues', body);
+  if (r.status === 200) alert(editingVenueId ? '场馆已更新' : '场馆已新增');
+  else alert('保存失败：' + ((r.data && r.data.reason) || ''));
+  closeVenueForm();
+  await loadVenueAdmin();
+}
+
+/* ================= 门店：场地预约管理 ================= */
+async function loadVenueBookingAdmin() {
+  await loadMembersForVenueAdmin();
+  const vid = $('vbAdminVenueFilter').value;
+  const r = await api('GET', '/api/venue-bookings' + (vid ? ('?venueId=' + vid) : ''));
+  const list = Array.isArray(r.data) ? r.data : [];
+  if (list.length === 0) { $('venueBookingAdminBox').innerHTML = '暂无场地预约'; return; }
+  $('venueBookingAdminBox').innerHTML = `<table>
+    <tr><th>#</th><th>场馆</th><th>类型</th><th>会员</th><th>时段</th><th>状态</th><th>来源</th><th>操作</th></tr>
+    ${list.map((b, i) => {
+      const can = b.status === 'booked';
+      return `<tr>
+        <td>${i + 1}</td><td>${b.venueName}</td>
+        <td>${b.venueType === 'public' ? '公共区域' : '私有场馆'}</td>
+        <td>${b.memberName}</td>
+        <td>${String(b.startTime).slice(5, 16).replace('T', ' ')} ~ ${String(b.endTime).slice(11, 16)}</td>
+        <td><span class="chip ${b.status === 'booked' ? 'ok' : 'err'}">${VENUE_BOOKING_CN[b.status] || b.status}</span></td>
+        <td>${b.createdBy ? '门店代约' : '会员自助'}</td>
+        <td><button class="btn ghost" ${can ? '' : 'disabled'} onclick="staffCancelVenueBooking('${b.id}')">取消</button></td>
+      </tr>`;
+    }).join('')}
+  </table>`;
+}
+
+async function loadMembersForVenueAdmin() {
+  if (!state.members || state.members.length === 0) {
+    const r = await api('GET', '/api/members');
+    state.members = Array.isArray(r.data) ? r.data : [];
+  }
+  const sel = $('vbAdminMember');
+  if (sel && sel.options.length === 0) {
+    sel.innerHTML = state.members.map(m => `<option value="${m.id}">${m.name}（${m.memberNo || ''}）</option>`).join('');
+  }
+  const dEl = $('vbAdminDate');
+  if (dEl && !dEl.value) dEl.value = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+}
+
+async function staffBookVenue() {
+  const box = $('vbAdminMsg');
+  const mid = $('vbAdminMember').value, vid = $('vbAdminVenue').value;
+  const d = $('vbAdminDate').value, s = $('vbAdminStart').value, e = $('vbAdminEnd').value;
+  if (!mid || !vid || !d || !s || !e) { box.innerHTML = '<span class="chip err">请完整选择会员、场馆与时段</span>'; return; }
+  const r = await api('POST', '/api/venue-bookings',
+      { memberId: Number(mid), venueId: Number(vid), startTime: d + 'T' + s + ':00', endTime: d + 'T' + e + ':00' });
+  if (r.status === 200) {
+    box.innerHTML = '<span class="chip ok">代客预约成功</span> ' + r.data.venueName + ' · ' + r.data.memberName;
+  } else {
+    box.innerHTML = '<span class="chip err">预约失败</span> ' + ((r.data && r.data.reason) || '');
+  }
+  await loadVenueBookingAdmin();
+}
+
+async function staffCancelVenueBooking(id) {
+  const r = await api('POST', `/api/venue-bookings/${id}/cancel`, {});
+  if (r.status !== 200) alert('取消失败：' + ((r.data && r.data.reason) || ''));
+  await loadVenueBookingAdmin();
+}
 
 // 回车登录
 document.addEventListener('keydown', e => {

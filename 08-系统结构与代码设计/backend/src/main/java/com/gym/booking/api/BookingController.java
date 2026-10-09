@@ -1,7 +1,9 @@
 package com.gym.booking.api;
 
 import com.gym.booking.application.BookingAppService;
+import com.gym.course.api.CourseFacade;
 import com.gym.identity.api.AuthContext;
+import com.gym.identity.api.AuthException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,9 +24,22 @@ import java.util.Map;
 public class BookingController {
 
     private final BookingAppService bookingService;
+    private final CourseFacade courseFacade;
 
-    public BookingController(BookingAppService bookingService) {
+    public BookingController(BookingAppService bookingService, CourseFacade courseFacade) {
         this.bookingService = bookingService;
+        this.courseFacade = courseFacade;
+    }
+
+    /** 是否本人、门店后台、或该课程的任课教练 */
+    private boolean canOperate(BookingView view) {
+        var s = AuthContext.current();
+        if (s.isStaff()) return true;
+        if (s.isMember()) return s.memberId() != null && s.memberId().equals(view.memberId());
+        if (s.isCoach() && s.coachId() != null) {
+            return s.coachId().equals(courseFacade.courseOf(view.courseId()).coachId());
+        }
+        return false;
     }
 
     public record BookRequest(Long memberId, Long courseId) {}
@@ -57,11 +72,13 @@ public class BookingController {
                         "ruleCode", String.valueOf(r.ruleCode()), "reason", String.valueOf(r.reason())));
     }
 
-    /** 签到：本人或门店代签 */
+    /** 签到：本人、门店代签，或该课程的任课教练核销 */
     @PostMapping("/{id}/checkin")
     public ResponseEntity<Void> checkIn(@PathVariable Long id, @RequestBody(required = false) CheckinRequest req) {
         BookingView view = bookingService.getBooking(id);
-        AuthContext.assertSelfOrStaff(view.memberId());
+        if (!canOperate(view)) {
+            throw AuthException.forbidden("只能核销本人或自己课程的签到");
+        }
         String channel = (req == null || req.channel() == null || req.channel().isBlank())
                 ? (AuthContext.current().isStaff() ? "front_desk" : "scan") : req.channel();
         Long operatorId = AuthContext.current().isStaff() ? AuthContext.current().userId() : null;

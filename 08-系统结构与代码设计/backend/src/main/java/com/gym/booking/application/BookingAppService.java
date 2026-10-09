@@ -1,5 +1,6 @@
 package com.gym.booking.application;
 
+import com.gym.booking.api.BookingDetailView;
 import com.gym.booking.api.BookingFacade;
 import com.gym.booking.api.BookingView;
 import com.gym.booking.internal.BookingEntity;
@@ -199,6 +200,26 @@ public class BookingAppService implements BookingFacade {
     @Override
     public long countActiveBookingsOfCourse(Long courseId) {
         return bookingRepository.countByCourseIdAndStatus(courseId, "booked");
+    }
+
+    /**
+     * 某课程的报名名单：一次取齐会员档案，避免逐条查询。
+     */
+    @Override
+    public java.util.List<BookingDetailView> listBookingsByCourse(Long courseId) {
+        var course = courseFacade.courseOf(courseId);
+        var members = membershipFacade.listMembers().stream()
+                .collect(java.util.stream.Collectors.toMap(m -> m.id(), m -> m, (a, b) -> a));
+        return bookingRepository.findByCourseIdOrderByIdAsc(courseId).stream()
+                .map(b -> {
+                    var m = members.get(b.getMemberId());
+                    return new BookingDetailView(b.getId(), b.getMemberId(),
+                            m == null ? ("#" + b.getMemberId()) : m.name(),
+                            m == null ? null : m.memberNo(),
+                            courseId, course.name(), b.getStatus(),
+                            b.getCheckinChannel(), b.getBookedAt(), b.getCheckinAt());
+                })
+                .toList();
     }
 
     @Override

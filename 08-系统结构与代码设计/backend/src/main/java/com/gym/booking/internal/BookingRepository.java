@@ -12,6 +12,9 @@ public interface BookingRepository extends JpaRepository<BookingEntity, Long> {
 
     Optional<BookingEntity> findByMemberIdAndCourseId(Long memberId, Long courseId);
 
+    /** 某课程的全部预约（按预约顺序），用于生成报名名单 */
+    java.util.List<BookingEntity> findByCourseIdOrderByIdAsc(Long courseId);
+
     /** 会员的预约列表（倒序，管理后台用） */
     java.util.List<BookingEntity> findByMemberIdOrderByIdDesc(Long memberId);
 

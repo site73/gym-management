@@ -45,15 +45,26 @@ public class AuthDataInitializer implements CommandLineRunner {
         ensureRole("member", "会员");
         ensureRole("manager", "店长");
         ensureRole("admin", "系统管理员");
+        ensureRole("coach", "教练");
 
         Long member1 = ensureUser("member1", "张三（会员）", "member");
         Long member2 = ensureUser("member2", "李四（会员）", "member");
         ensureUser("manager", "门店店长", "manager");
         ensureUser("admin", "系统管理员", "admin");
 
+        // 教练账号（coach1/coach2/coach3 绑定 coach 档案 101/102/103）
+        Long coach1 = ensureUser("coach1", "王教练", "coach");
+        Long coach2 = ensureUser("coach2", "李教练", "coach");
+        Long coach3 = ensureUser("coach3", "赵教练", "coach");
+
         // 会员账号与会员档案绑定（member.user_id）
         if (member1 != null) repo.linkMember(1L, member1);
         if (member2 != null) repo.linkMember(2L, member2);
+
+        // 教练账号与教练档案绑定（coach.user_id）
+        if (coach1 != null) repo.linkCoach(101L, coach1);
+        if (coach2 != null) repo.linkCoach(102L, coach2);
+        if (coach3 != null) repo.linkCoach(103L, coach3);
 
         long total = repo.count();
         log.info("[auth] 账号初始化完成：系统用户 {} 个（默认密码 {}）", total, DEFAULT_PASSWORD);
@@ -84,6 +95,8 @@ public class AuthDataInitializer implements CommandLineRunner {
     /** 供测试与文档使用的账号清单 */
     public static List<String> demoAccounts() {
         return List.of("member1 / 123456（会员·张三）", "member2 / 123456（会员·李四·会籍过期）",
-                "manager / 123456（门店后台）", "admin / 123456（门店后台·管理员）");
+                "manager / 123456（门店后台）", "admin / 123456（门店后台·管理员）",
+                "coach1 / 123456（教练·王教练）", "coach2 / 123456（教练·李教练）",
+                "coach3 / 123456（教练·赵教练）");
     }
 }

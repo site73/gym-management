@@ -1,6 +1,7 @@
 -- 重置演示业务数据（MySQL 持久库下保证冒烟测试可重复执行）
 -- 保留基础数据（member / membership / course / rule_config / dict_item），仅清理交易数据并复位计数
 DELETE FROM booking;
+DELETE FROM venue_booking;
 DELETE FROM payment_order;
 DELETE FROM settlement;
 DELETE FROM audit_log;

@@ -61,6 +61,14 @@ public interface BookingFacade {
     /** 某课程当前有效（status=booked）的预约数——用于课程下架前的兜底校验 */
     long countActiveBookingsOfCourse(Long courseId);
 
+    /**
+     * 某课程的报名名单（含会员姓名，按预约顺序）。
+     *
+     * <p>用于门店后台与任课教练查看"这门课都有谁报了"；
+     * 课程满员时可据此外呼或现场核对。
+     */
+    java.util.List<BookingDetailView> listBookingsByCourse(Long courseId);
+
     /** 教练课时汇总行 */
     record CoachTimes(Long coachId, long times) {}
 }

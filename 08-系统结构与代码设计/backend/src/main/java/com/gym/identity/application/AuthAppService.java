@@ -80,7 +80,7 @@ public class AuthAppService implements AuthFacade {
         log.info("[auth] 新会员注册成功：{} → {}（会员 ID {}）", uname, member.memberNo(), member.id());
 
         return tokenStore.create(user.getId(), user.getUsername(), user.getDisplayName(),
-                List.of("member"), "MEMBER", member.id());
+                List.of("member"), "MEMBER", member.id(), null);
     }
 
     @Override
@@ -100,11 +100,13 @@ public class AuthAppService implements AuthFacade {
         }
 
         List<String> roles = userRepository.findRoleCodes(user.getId());
-        String role = roles.contains("member") ? "MEMBER" : "STAFF";
+        String role = roles.contains("member") ? "MEMBER"
+                    : roles.contains("coach") ? "COACH" : "STAFF";
         Long memberId = "MEMBER".equals(role) ? userRepository.findMemberIdByUserId(user.getId()) : null;
+        Long coachId = "COACH".equals(role) ? userRepository.findCoachIdByUserId(user.getId()) : null;
 
         AuthSession session = tokenStore.create(user.getId(), user.getUsername(),
-                user.getDisplayName(), roles, role, memberId);
+                user.getDisplayName(), roles, role, memberId, coachId);
         auditLogger.log("auth.login", "sys_user", user.getId(), "role=" + role);
         log.info("[auth] 登录成功：{}（{}）", user.getUsername(), role);
         return session;

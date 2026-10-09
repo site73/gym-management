@@ -40,6 +40,19 @@ const login = async (u, p) => call('POST', '/api/auth/login', { username: u, pas
   console.log('============================================================\n');
 
   /* ==================== A 认证 ==================== */
+  /** 未来第 d 天的 h 点（时间字符串，供课程/场馆构造入参） */
+  function sFuture(d, h) {
+    const t = new Date(Date.now() + d * 86400000);
+    t.setHours(h, 0, 0, 0);
+    return t.toISOString().slice(0, 19);
+  }
+  /** 过去第 d 天的 h 点 */
+  function sPast(d, h) {
+    const t = new Date(Date.now() - d * 86400000);
+    t.setHours(h, 0, 0, 0);
+    return t.toISOString().slice(0, 19);
+  }
+
   const A = 'A 登录认证';
   let r = await call('GET', '/api/courses');
   check(A, '未登录访问业务接口', '401', `${r.status}`, r.status === 401);
@@ -390,6 +403,163 @@ const login = async (u, p) => call('POST', '/api/auth/login', { username: u, pas
   check(E, '重复退课被拒绝', '409 + INVALID_STATE',
         `${wdAgain.status} ${wdAgain.data && wdAgain.data.code}`,
         wdAgain.status === 409);
+
+  /* ==================== K 教练角色 ==================== */
+  const K = 'K 教练角色';
+  const c1 = await login('coach1', '123456');
+  check(K, '教练登录', '200 + role=COACH + coachId=101',
+        `${c1.status} role=${c1.data && c1.data.user.role} coachId=${c1.data && c1.data.user.coachId}`,
+        c1.status === 200 && c1.data.user.role === 'COACH' && c1.data.user.coachId === 101);
+  const T_COACH1 = c1.data.token, T_COACH3 = (await login('coach3', '123456')).data.token;
+  const T_M2 = (await login('member2', '123456')).data.token;   // 会籍过期的会员
+
+  r = await call('GET', '/api/coaches/me', undefined, T_COACH1);
+  check(K, '教练查看本人档案', '200 + 姓名与擅长项目',
+        `${r.status} ${r.data && r.data.name}`, r.status === 200 && r.data.name === '王教练');
+
+  r = await call('POST', '/api/courses', {
+    code: 'CX1', name: '教练不该能排的课', type: 'group', coachId: 101, room: 'A 厅',
+    startTime: sFuture(3, 9), endTime: sFuture(3, 10), capacity: 5 }, T_COACH1);
+  check(K, '教练不能排课（仅门店后台）', '403', `${r.status}`, r.status === 403);
+
+  r = await call('POST', '/api/venues', {
+    code: 'VX1', name: '教练不该能建的场馆', type: 'private', capacity: 2 }, T_COACH1);
+  check(K, '教练不能维护场馆（仅门店后台）', '403', `${r.status}`, r.status === 403);
+
+  r = await call('POST', '/api/coaches',
+        { code: 'K9' + Date.now().toString().slice(-4), name: '测试教练', status: 'active' }, T_MGR);
+  const coachNewId = r.data && r.data.id;
+  check(K, '店长可维护教练档案', '200 + 返回 id', `${r.status} id=${coachNewId}`,
+        r.status === 200 && !!coachNewId);
+
+  r = await call('PUT', `/api/coaches/${coachNewId}`,
+        { code: 'K901', name: '测试教练改', status: 'leave' }, T_MGR);
+  check(K, '教练状态可改为休假', '200 + status=leave',
+        `${r.status} ${r.data && r.data.status}`, r.status === 200 && r.data.status === 'leave');
+
+  /* ==================== L 场馆与场地预约 ==================== */
+  const L = 'L 场馆与场地预约';
+  const vb = (d, h) => sFuture(d, h);
+
+  r = await call('GET', '/api/venues', undefined, T_M1);
+  const venues = Array.isArray(r.data) ? r.data : [];
+  const privCount = venues.filter(v => v.type === 'private').length;
+  const pubCount = venues.filter(v => v.type === 'public').length;
+  check(L, '场馆列表：4 私有 + 1 公共', '私有 4 / 公共 1',
+        `${r.status} 私有 ${privCount} / 公共 ${pubCount}`,
+        r.status === 200 && privCount === 4 && pubCount === 1);
+
+  r = await call('POST', '/api/venue-bookings',
+        { venueId: 1, startTime: vb(5, 10), endTime: vb(5, 11) }, T_M1);
+  check(L, '会员自助预约私有场馆', '200 + 返回姓名与场馆名',
+        `${r.status} ${r.data && r.data.venueName}/${r.data && r.data.memberName}`,
+        r.status === 200 && r.data.memberName === '张三');
+
+  r = await call('POST', '/api/venue-bookings',
+        { venueId: 1, startTime: vb(5, 10), endTime: vb(5, 11) }, T_M1);
+  check(L, '同一场地同一时段 → 拒绝', '409 + 含"不可重叠"',
+        `${r.status} ${r.data && r.data.reason}`,
+        r.status === 409 && /重叠/.test(r.data.reason || ''));
+
+  r = await call('POST', '/api/venue-bookings',
+        { venueId: 2, startTime: vb(5, 10), endTime: vb(5, 11) }, T_M1);
+  check(L, '换一个场馆同时段 → 允许', '200', `${r.status}`, r.status === 200);
+
+  r = await call('POST', '/api/venue-bookings',
+        { venueId: 5, startTime: vb(5, 10), endTime: vb(5, 11) }, T_M1);
+  check(L, '公共区域可预约', '200', `${r.status}`, r.status === 200);
+
+  r = await call('POST', '/api/venue-bookings',
+        { venueId: 3, startTime: vb(6, 10), endTime: vb(6, 11) }, T_M2);
+  check(L, '会籍过期会员约私有场馆 → 拒绝', '409 + 含"有效会籍"',
+        `${r.status} ${r.data && r.data.reason}`,
+        r.status === 409 && /有效会籍/.test(r.data.reason || ''));
+
+  r = await call('POST', '/api/venue-bookings',
+        { venueId: 5, startTime: vb(6, 10), endTime: vb(6, 11) }, T_M2);
+  check(L, '会籍过期会员约公共区域 → 允许', '200', `${r.status}`, r.status === 200);
+
+  r = await call('POST', '/api/venue-bookings',
+        { venueId: 1, startTime: vb(7, 11), endTime: vb(7, 10) }, T_M1);
+  check(L, '结束早于开始 → 400', '400', `${r.status}`, r.status === 400);
+
+  r = await call('POST', '/api/venue-bookings',
+        { venueId: 1, startTime: vb(7, 9), endTime: vb(7, 15) }, T_M1);
+  check(L, '单次超过 4 小时 → 400', '400 + 含"4 小时"',
+        `${r.status} ${r.data && r.data.reason}`, r.status === 400);
+
+  r = await call('POST', '/api/venue-bookings',
+        { venueId: 1, startTime: sPast(1, 10), endTime: sPast(1, 11) }, T_M1);
+  check(L, '开始时间在当前之前 → 400', '400', `${r.status}`, r.status === 400);
+
+  r = await call('PUT', '/api/venues/4',
+        { name: '力量训练室', type: 'private', capacity: 6, hourlyFee: 100, status: 'maintenance' }, T_MGR);
+  check(L, '店长把场馆置为维护中', '200 + status=maintenance',
+        `${r.status} ${r.data && r.data.status}`, r.status === 200 && r.data.status === 'maintenance');
+  r = await call('POST', '/api/venue-bookings',
+        { venueId: 4, startTime: vb(8, 10), endTime: vb(8, 11) }, T_M1);
+  check(L, '维护中的场馆不可预约', '409', `${r.status}`, r.status === 409);
+  await call('PUT', '/api/venues/4',
+        { name: '力量训练室', type: 'private', capacity: 6, hourlyFee: 100, status: 'available' }, T_MGR);
+
+  r = await call('POST', '/api/venue-bookings',
+        { venueId: 2, memberId: 1, startTime: vb(9, 14), endTime: vb(9, 15) }, T_MGR);
+  check(L, '门店代客预约（来源=门店代约）', '200 + createdBy 非空',
+        `${r.status} ${r.data && r.data.memberName}`,
+        r.status === 200 && r.data.createdBy !== null);
+
+  r = await call('POST', '/api/venue-bookings',
+        { venueId: 3, memberId: 2, startTime: vb(9, 14), endTime: vb(9, 15) }, T_M1);
+  check(L, '会员伪造 memberId 被改写为本人', '实际 memberId=1',
+        `${r.status} memberId=${r.data && r.data.memberId}`,
+        r.status === 200 && r.data.memberId === 1);
+
+  r = await call('GET', '/api/venue-bookings', undefined, T_M1);
+  const myVb = Array.isArray(r.data) ? r.data : [];
+  check(L, '会员只看到自己的场地预约', '全部记录均属于本人',
+        `${myVb.length} 条`, myVb.every(x => x.memberId === 1));
+
+  const toCancel = myVb.find(x => x.status === 'booked');
+  r = await call('POST', `/api/venue-bookings/${toCancel.id}/cancel`, {}, T_M1);
+  check(L, '取消本人的场地预约', '200', `${r.status}`, r.status === 200);
+  r = await call('POST', `/api/venue-bookings/${toCancel.id}/cancel`, {}, T_M1);
+  check(L, '重复取消 → 409', '409', `${r.status}`, r.status === 409);
+
+  r = await call('GET', '/api/venue-bookings', undefined, T_MGR);
+  const allVb = Array.isArray(r.data) ? r.data : [];
+  check(L, '门店可查看全部场地预约', '条数 ≥ 会员可见条数', `${allVb.length} 条`, allVb.length >= myVb.length);
+
+  /* ==================== M 课程报名名单 ==================== */
+  const M = 'M 课程报名名单';
+  // 课程 13（搏击操，教练 101）有余位，适合用来造报名数据
+  await call('POST', '/api/enrollments', { courseId: 13 }, T_M1);
+  await call('POST', '/api/enrollments', { courseId: 13 }, T_M2);
+
+  r = await call('GET', '/api/courses/13/bookings', undefined, T_MGR);
+  const roster = Array.isArray(r.data) ? r.data : [];
+  check(M, '门店查看课程报名名单（含会员姓名与编号）', '200 + ≥1 人且带姓名/编号',
+        `${r.status} ${roster.length} 人 ${roster.map(x => x.memberName).filter(Boolean).join('、')}`,
+        r.status === 200 && roster.length >= 1 && !!roster[0].memberName && !!roster[0].memberNo);
+
+  check(M, '名单含课程名与状态字段', 'courseName 与 status 均有值',
+        `${roster[0] && roster[0].courseName} / ${roster[0] && roster[0].status}`,
+        !!roster[0].courseName && !!roster[0].status);
+
+  // 说明：演示数据中 course.booked_count 是种子预设值（用于展示"满员/余位"效果），
+  // 与 booking 表的实际记录数并不相等；因此这里验证"选课 → 名单可见"的完整链路，
+  // 而不是拿 booked_count 做等式比较。
+  const hasM1 = roster.some(x => x.memberId === 1 && x.memberName === '张三');
+  check(M, '刚选课的会员出现在名单中（选课→名单链路）', '名单含「张三」',
+        roster.map(x => x.memberName).join('、'), hasM1);
+
+  r = await call('GET', '/api/courses/13/bookings', undefined, T_M1);
+  check(M, '会员不能查看报名名单', '403', `${r.status}`, r.status === 403);
+
+  r = await call('GET', '/api/courses/13/bookings', undefined, T_COACH1);
+  check(M, '本课教练可查看名单（课程13属教练101）', '200', `${r.status}`, r.status === 200);
+
+  r = await call('GET', '/api/courses/13/bookings', undefined, T_COACH3);
+  check(M, '非本课教练不能查看名单', '403', `${r.status}`, r.status === 403);
 
   /* ==================== F 会话 ==================== */
   const F = 'F 会话管理';

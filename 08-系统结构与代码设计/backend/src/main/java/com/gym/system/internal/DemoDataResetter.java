@@ -26,6 +26,7 @@ public class DemoDataResetter {
     @Transactional
     public void reset() {
         int bookings = jdbc.update("delete from booking");
+        int venueBookings = jdbc.update("delete from venue_booking");   // 场地预约（V11 新增）
         int orders = jdbc.update("delete from payment_order");
         int settlements = jdbc.update("delete from settlement");
         int audits = jdbc.update("delete from audit_log");
@@ -40,7 +41,7 @@ public class DemoDataResetter {
         jdbc.update("update membership set remaining_times = case id "
                 + "when 2 then 1 else remaining_times end");
 
-        log.info("[admin] 演示数据已重置：预约 {} 条、订单 {} 条、对账 {} 条、审计 {} 条",
-                bookings, orders, settlements, audits);
+        log.info("[admin] 演示数据已重置：课程预约 {} 条、场地预约 {} 条、订单 {} 条、对账 {} 条、审计 {} 条",
+                bookings, venueBookings, orders, settlements, audits);
     }
 }

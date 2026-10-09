@@ -1,7 +1,9 @@
 package com.gym.course.api;
 
+import com.gym.booking.api.BookingDetailView;
 import com.gym.booking.api.BookingFacade;
 import com.gym.identity.api.AuthContext;
+import com.gym.identity.api.AuthException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,6 +38,24 @@ public class CourseController {
     @GetMapping("/{id}")
     public CourseView detail(@PathVariable Long id) {
         return courseFacade.courseOf(id);
+    }
+
+    /**
+     * 某课程的报名名单（含会员姓名）——门店后台与任课教练可查。
+     *
+     * <p>课程满员时（如 15/15），可据此查到全部报名会员。
+     */
+    @GetMapping("/{id}/bookings")
+    public List<BookingDetailView> roster(@PathVariable Long id) {
+        var s = AuthContext.current();
+        boolean allowed = s.isStaff();
+        if (!allowed && s.isCoach() && s.coachId() != null) {
+            allowed = s.coachId().equals(courseFacade.courseOf(id).coachId());
+        }
+        if (!allowed) {
+            throw AuthException.forbidden("仅门店后台或该课教练可查看报名名单");
+        }
+        return bookingFacade.listBookingsByCourse(id);
     }
 
     /** 新建课程（管理员） */

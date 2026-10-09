@@ -24,10 +24,10 @@ public class TokenStore {
     private final Map<String, AuthSession> sessions = new ConcurrentHashMap<>();
 
     public AuthSession create(Long userId, String username, String displayName,
-                              java.util.List<String> roles, String role, Long memberId) {
+                              java.util.List<String> roles, String role, Long memberId, Long coachId) {
         String token = UUID.randomUUID().toString().replace("-", "");
         AuthSession session = new AuthSession(token, userId, username, displayName,
-                roles, role, memberId, LocalDateTime.now().plusHours(TTL_HOURS));
+                roles, role, memberId, coachId, LocalDateTime.now().plusHours(TTL_HOURS));
         sessions.put(token, session);
         return session;
     }

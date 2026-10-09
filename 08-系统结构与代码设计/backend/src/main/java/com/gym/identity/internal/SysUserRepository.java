@@ -48,4 +48,11 @@ public interface SysUserRepository extends JpaRepository<SysUserEntity, Long> {
 
     @Query(value = "select id from member where user_id = :userId", nativeQuery = true)
     Long findMemberIdByUserId(@Param("userId") Long userId);
+
+    @Modifying
+    @Query(value = "update coach set user_id = :userId where id = :coachId", nativeQuery = true)
+    void linkCoach(@Param("coachId") Long coachId, @Param("userId") Long userId);
+
+    @Query(value = "select id from coach where user_id = :userId", nativeQuery = true)
+    Long findCoachIdByUserId(@Param("userId") Long userId);
 }

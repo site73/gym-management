@@ -22,13 +22,18 @@ class AuthContextTest {
 
     private AuthSession member(long memberId) {
         return new AuthSession("t-member", 10L, "member1", "张三", List.of("member"),
-                "MEMBER", memberId, LocalDateTime.now().plusHours(1));
+                "MEMBER", memberId, null, LocalDateTime.now().plusHours(1));
     }
 
     private AuthSession staff(boolean admin) {
         return new AuthSession("t-staff", 20L, admin ? "admin" : "manager", "店长",
-                admin ? List.of("admin") : List.of("manager"), "STAFF", null,
+                admin ? List.of("admin") : List.of("manager"), "STAFF", null, null,
                 LocalDateTime.now().plusHours(1));
+    }
+
+    private AuthSession coach(long coachId) {
+        return new AuthSession("t-coach", 30L, "coach1", "王教练", List.of("coach"),
+                "COACH", null, coachId, LocalDateTime.now().plusHours(1));
     }
 
     @AfterEach
@@ -96,5 +101,39 @@ class AuthContextTest {
         AuthContext.set(member(1L));
         AuthContext.clear();
         assertThatThrownBy(AuthContext::current).isInstanceOf(AuthException.class);
+    }
+
+    /* ==================== 教练角色 ==================== */
+
+    @Test
+    @DisplayName("教练账号的教练 ID 被强制为本人（忽略前端传入）")
+    void coach_id_is_forced_to_self() {
+        AuthContext.set(coach(101L));
+        assertThat(AuthContext.effectiveCoachId(999L)).isEqualTo(101L);
+        assertThat(AuthContext.effectiveCoachId(null)).isEqualTo(101L);
+    }
+
+    @Test
+    @DisplayName("门店后台可按教练筛选课表")
+    void staff_can_query_any_coach() {
+        AuthContext.set(staff(false));
+        assertThat(AuthContext.effectiveCoachId(101L)).isEqualTo(101L);
+    }
+
+    @Test
+    @DisplayName("教练不能访问门店后台与管理员接口")
+    void coach_cannot_access_staff_api() {
+        AuthContext.set(coach(101L));
+        assertThatThrownBy(AuthContext::requireStaff).isInstanceOf(AuthException.class);
+        assertThatThrownBy(AuthContext::requireAdmin).isInstanceOf(AuthException.class);
+    }
+
+    @Test
+    @DisplayName("会员与店长不能访问教练专属接口")
+    void others_cannot_access_coach_api() {
+        AuthContext.set(member(1L));
+        assertThatThrownBy(AuthContext::requireCoach).isInstanceOf(AuthException.class);
+        AuthContext.set(staff(false));
+        assertThatThrownBy(AuthContext::requireCoach).isInstanceOf(AuthException.class);
     }
 }

@@ -13,6 +13,7 @@ import java.util.List;
  * @param roles       角色编码（member / manager / admin …）
  * @param role        归一化角色：MEMBER（会员端）/ STAFF（门店后台）
  * @param memberId    关联的会员 ID（仅会员账号有值）
+ * @param coachId     关联的教练档案 ID（仅教练账号有值）
  * @param expiresAt   过期时间
  */
 public record AuthSession(
@@ -23,17 +24,19 @@ public record AuthSession(
         List<String> roles,
         String role,
         Long memberId,
+        Long coachId,
         LocalDateTime expiresAt) {
 
     public boolean isMember() { return "MEMBER".equals(role); }
     public boolean isStaff() { return "STAFF".equals(role); }
+    public boolean isCoach() { return "COACH".equals(role); }
     public boolean isAdmin() { return roles != null && roles.contains("admin"); }
 
     /** 对外返回的用户信息（不含令牌） */
     public UserInfo toUserInfo() {
-        return new UserInfo(userId, username, displayName, roles, role, memberId, isAdmin());
+        return new UserInfo(userId, username, displayName, roles, role, memberId, coachId, isAdmin());
     }
 
     public record UserInfo(Long userId, String username, String displayName,
-                           List<String> roles, String role, Long memberId, boolean admin) {}
+                           List<String> roles, String role, Long memberId, Long coachId, boolean admin) {}
 }
