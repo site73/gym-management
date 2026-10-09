@@ -66,6 +66,37 @@
   .kpi div{border:1px solid var(--line);border-radius:10px;padding:10px}
   .kpi b{display:block;font-size:18px;color:var(--primary)}
   .kpi span{font-size:11px;color:var(--muted)}
+
+  /* ---------- 左侧导航布局 ---------- */
+  .layout{display:flex;align-items:stretch;min-height:calc(100vh - 54px)}
+  .sidebar{width:208px;flex:0 0 208px;background:var(--card);border-right:1px solid var(--line);padding:12px 10px;display:flex;flex-direction:column;gap:3px}
+  .sidebar .navtitle{font-size:11px;color:var(--muted);padding:8px 10px 4px;letter-spacing:1px}
+  .sidebar button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;background:transparent;border:0;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:13.5px;color:var(--text);font-family:inherit}
+  .sidebar button:hover{background:var(--chip)}
+  .sidebar button.active{background:var(--primary);color:#fff;font-weight:700}
+  .sidebar button .ic{width:18px;text-align:center;font-size:14px}
+  .content{flex:1;min-width:0;padding:16px;max-width:1120px}
+
+  /* ---------- 登录页身份选择 ---------- */
+  .idpick{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin:10px 0 2px}
+  .idpick button{width:auto;margin:0;padding:13px 6px;background:#fff;border:2px solid var(--line);color:var(--text);font-size:13px;border-radius:10px;line-height:1.4}
+  .idpick button .big{display:block;font-size:22px;margin-bottom:5px}
+  .idpick button.sel{border-color:var(--primary);background:var(--chip);color:var(--primary);font-weight:700}
+  .login-step{font-size:12px;color:var(--muted);margin-top:14px}
+
+  /* ---------- 弹窗（扫码签到等） ---------- */
+  .mask{position:fixed;inset:0;background:rgba(15,23,42,.6);display:flex;align-items:center;justify-content:center;z-index:60;padding:20px}
+  .modal{background:#fff;border-radius:14px;padding:20px 22px;width:372px;max-width:100%;box-shadow:0 18px 50px rgba(0,0,0,.32);text-align:center}
+  .modal h3{margin:0 0 4px;font-size:16px;color:var(--primary)}
+  .modal .qr{width:236px;height:236px;margin:14px auto;border:1px solid var(--line);border-radius:10px;padding:8px;background:#fff;display:flex;align-items:center;justify-content:center}
+  .modal .qr svg{width:100%;height:100%;display:block}
+  .modal .code{font-family:Consolas,monospace;font-size:11px;color:var(--muted);word-break:break-all;background:var(--chip);padding:8px;border-radius:8px;margin-top:10px}
+  .modal .actions{margin-top:14px}
+
+  /* ---------- 搜索 ---------- */
+  .searchbar{display:flex;gap:8px;align-items:center;margin-bottom:10px;flex-wrap:wrap}
+  .searchbar input{flex:1;min-width:160px}
+  .hl{background:#fff3c4;border-radius:3px}
 </style>
 </head>
 <body>
@@ -74,8 +105,17 @@
 <div id="loginView">
   <div class="login-box">
     <h1>健身房运营管理系统</h1>
-    <div class="sub">登录后将按账号角色进入对应页面</div>
+    <div class="sub">请先选择登录身份，再输入账号密码</div>
     <div id="loginFormBlock">
+      <div class="login-step">第 1 步 · 选择身份</div>
+      <div class="idpick">
+        <button id="idMember" class="sel" onclick="pickIdentity('MEMBER')"><span class="big">&#127939;</span>会员</button>
+        <button id="idManager" onclick="pickIdentity('MANAGER')"><span class="big">&#127978;</span>店长</button>
+        <button id="idAdmin" onclick="pickIdentity('ADMIN')"><span class="big">&#9881;</span>管理员</button>
+      </div>
+      <div class="login-step" id="idHint">当前身份：会员（进入会员端）</div>
+
+      <div class="login-step">第 2 步 · 输入账号密码</div>
       <label for="loginUser">用户名</label>
       <input id="loginUser" autocomplete="username" placeholder="如 member1 / manager">
       <label for="loginPass">密码</label>
@@ -121,28 +161,37 @@
     </div>
   </header>
 
-  <!-- 门店后台标签 -->
-  <div class="tabs hidden" id="staffTabs">
-    <button id="tabBooking" class="active" onclick="switchTab('booking')">约课管理</button>
-    <button id="tabPay" onclick="switchTab('pay')">收费与对账</button>
-    <button id="tabRisk" onclick="switchTab('risk')">风险与预测</button>
-    <button id="tabPerf" onclick="switchTab('perf')">业绩与提成</button>
-    <button id="tabReport" onclick="switchTab('report')">经营摘要 / 审计</button>
-    <button id="tabCourse" class="hidden" onclick="switchTab('course')">课程管理</button>
-    <button id="tabSystem" class="hidden" onclick="switchTab('system')">系统管理</button>
-  </div>
+  <div class="layout">
+    <!-- 左侧导航：按角色渲染，每个板块一个独立页面 -->
+    <aside class="sidebar" id="sidebar"></aside>
 
-  <main id="mainGrid">
-    <div class="views">
+    <div class="content">
+      <div class="views" id="views">
 
-      <!-- ---------- 会员端 ---------- -->
+      <!-- ---------- 会员端：我的信息 ---------- -->
       <section id="viewMember" class="panel hidden">
         <h2>我的信息</h2>
         <div id="memberInfo" class="m">加载中…</div>
-        <h2 style="margin-top:16px">课程与余位</h2>
+      </section>
+
+      <!-- ---------- 会员端：课程与余位（可选课，支持搜索） ---------- -->
+      <section id="viewMemberCourses" class="panel hidden">
+        <h2>课程与余位</h2>
+        <div class="searchbar">
+          <input id="memberCourseSearch" placeholder="搜索课程名称 / 编号，如 瑜伽、C001" oninput="renderMemberCourses()">
+          <button class="btn ghost" id="memberCourseClear" onclick="clearSearch('memberCourseSearch', renderMemberCourses)">清空</button>
+          <button class="btn ghost" onclick="loadMemberCourses()">刷新</button>
+        </div>
         <div id="memberCourses" class="m">加载中…</div>
-        <h2 style="margin-top:16px">我的预约</h2>
-        <div class="m"><button class="btn ghost" onclick="loadMyBookings()">刷新</button></div>
+      </section>
+
+      <!-- ---------- 会员端：我的预约（退课 / 扫码签到） ---------- -->
+      <section id="viewMemberBookings" class="panel hidden">
+        <h2>我的预约</h2>
+        <div class="m">
+          <button class="btn ghost" onclick="loadMyBookings()">刷新</button>
+          <span class="m">　点「扫码签到」会弹出二维码，出示给门店核销</span>
+        </div>
         <div id="myBookings" class="m">加载中…</div>
       </section>
 
@@ -153,13 +202,25 @@
         <div id="memberBox" class="m">加载中…</div>
 
         <h2 style="margin-top:16px">课程与余位</h2>
+        <div class="searchbar">
+          <input id="staffCourseSearch" placeholder="搜索课程名称 / 编号 / 教练 / 场地" oninput="renderCourses()">
+          <button class="btn ghost" id="staffCourseClear" onclick="clearSearch('staffCourseSearch', renderCourses)">清空</button>
+          <button class="btn ghost" onclick="loadCourses()">刷新</button>
+        </div>
         <div class="m" id="selectedHint">未选择会员：点击上方会员卡片后，可为该会员代客约课。</div>
-        <div class="m"><button class="btn ghost" onclick="loadCourses()">刷新</button></div>
         <div id="courseBox" class="m">加载中…</div>
 
         <h2 style="margin-top:16px">预约列表</h2>
         <div class="m"><button class="btn ghost" onclick="loadBookings()">刷新</button></div>
         <div id="bookingBox" class="m">加载中…</div>
+
+        <h2 style="margin-top:16px">扫码核销签到</h2>
+        <div class="m">会员出示签到二维码后，用扫码枪扫入、或把二维码内容粘贴到下方完成核销。</div>
+        <div class="searchbar">
+          <input id="checkinScanInput" placeholder="粘贴二维码内容，如 GYM-CHECKIN:12:1">
+          <button class="btn" onclick="scanCheckin()">核销签到</button>
+        </div>
+        <div id="scanResult" class="m"></div>
       </section>
 
       <!-- ---------- 门店后台：收费与对账 ---------- -->
@@ -265,7 +326,11 @@
         </div>
 
         <h2 style="margin-top:20px">课程列表</h2>
-        <div class="m"><button class="btn ghost" onclick="loadAdminCourses()">刷新列表</button></div>
+        <div class="searchbar">
+          <input id="adminCourseSearch" placeholder="搜索课程名称 / 编号 / 教练 / 状态" oninput="renderAdminCourses()">
+          <button class="btn ghost" id="adminCourseClear" onclick="clearSearch('adminCourseSearch', renderAdminCourses)">清空</button>
+          <button class="btn ghost" onclick="loadAdminCourses()">刷新列表</button>
+        </div>
         <div id="adminCourseBox" class="m">未加载</div>
       </section>
 
@@ -278,21 +343,28 @@
           <div><button class="btn danger" onclick="resetDemoData()">重置数据</button></div>
         </div>
       </section>
-    </div>
 
-    <aside class="panel side hidden" id="logPanel">
-      <h2>接口调用日志（真实请求）<span class="chip" id="logCount">0 条</span></h2>
-      <div style="margin-bottom:8px">
-        <button class="btn ghost" onclick="clearLog()">清空日志</button>
+      <!-- ---------- 接口调用日志（独立页面，仅门店后台） ---------- -->
+      <section id="viewLog" class="panel hidden">
+        <h2>接口调用日志（真实请求）<span class="chip" id="logCount">0 条</span></h2>
+        <div style="margin-bottom:8px">
+          <button class="btn ghost" onclick="clearLog()">清空日志</button>
+        </div>
+        <div class="log" id="log"></div>
+      </section>
       </div>
-      <div class="log" id="log"></div>
-    </aside>
-  </main>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 通用弹窗（扫码签到 / 二维码） ==================== -->
+<div id="modalMask" class="mask hidden" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalBox"></div>
 </div>
 
 <script>
 const $ = id => document.getElementById(id);
-const state = { token: null, user: null, members: [], courses: [], bookings: [] };
+const state = { token: null, user: null, members: [], courses: [], memberCourses: [], adminCourses: [], bookings: [] };
 // 门店后台当前选中的会员（用于代客约课，实现「会员 ↔ 课程余位」联动）
 let pickedMemberId = null;
 const STATUS_CN = { booked: '已约', checked_in: '已签到', no_show: '爽约', cancelled: '已取消' };
@@ -348,6 +420,13 @@ async function doLogin() {
   });
   const data = await res.json().catch(() => null);
   if (!res.ok) { $('loginMsg').textContent = (data && data.reason) || '登录失败'; return; }
+
+  // 身份与账号角色必须匹配：选了「会员」却拿门店账号登录，不允许直接进去
+  if (!identityMatches(data.user, loginIdentity)) {
+    $('loginMsg').textContent = '该账号不是「' + IDENTITY_CN[loginIdentity]
+        + '」身份，请重新选择身份后再登录';
+    return;
+  }
 
   state.token = data.token; state.user = data.user;
   localStorage.setItem('gymToken', data.token);
@@ -421,7 +500,7 @@ function showLogin(msg) {
   showLoginForm();
 }
 
-/** 按角色进入对应页面 */
+/** 按角色进入对应页面：渲染左侧导航并打开首页 */
 async function enterApp() {
   $('loginView').classList.add('hidden');
   $('appView').classList.remove('hidden');
@@ -431,49 +510,86 @@ async function enterApp() {
   $('userName').textContent = `${u.displayName}（${u.username}）`;
   $('roleTag').textContent = isStaff ? (u.admin ? '门店后台 · 管理员' : '门店后台') : '会员端';
 
-  // 会员端不显示接口调用日志与门店标签页（按需求：日志仅门店后台可见）
-  $('logPanel').classList.toggle('hidden', !isStaff);
-  $('mainGrid').classList.toggle('single', !isStaff);
-  $('staffTabs').classList.toggle('hidden', !isStaff);
-  $('tabSystem').classList.toggle('hidden', !(isStaff && u.admin));
-  // 排课（课程维护）对管理员与店长均开放；数据重置仅管理员
-  $('tabCourse').classList.toggle('hidden', !isStaff);
-
-  if (isStaff) {
-    showView('viewBooking');
-    $('viewMember').classList.add('hidden');
-    await loadMembers();
-    await loadCourses();
-    await loadBookings();
-    await loadOrders('');
-    await loadSettlements();
-    fillPredictCourses();
-  } else {
-    ALL_VIEWS.forEach(v => $(v).classList.add('hidden'));
-    $('viewMember').classList.remove('hidden');
-    await loadMyInfo();
-    await loadMemberCourses();
-    await loadMyBookings();
-  }
+  renderSidebar();
+  await navTo(isStaff ? 'booking' : 'memberInfo');
 }
 
-/* ================= 视图切换 ================= */
-const ALL_VIEWS = ['viewBooking','viewPay','viewRisk','viewPerf','viewReport','viewCourse','viewSystem','viewMember'];
+/* ================= 左侧导航（每个板块一个独立页面） ================= */
+const ALL_VIEWS = ['viewMember','viewMemberCourses','viewMemberBookings',
+                   'viewBooking','viewPay','viewRisk','viewPerf','viewReport',
+                   'viewCourse','viewSystem','viewLog'];
 
-function showView(id) {
-  ALL_VIEWS.forEach(v => $(v).classList.toggle('hidden', v !== id));
+/** 当前登录者可见的导航项 */
+function navItems() {
+  const u = state.user || {};
+  const staff = u.role === 'STAFF';
+  const admin = staff && !!u.admin;
+  const items = [
+    { key:'memberInfo',     view:'viewMember',         label:'我的信息',   icon:'&#128100;', show:!staff, enter: loadMyInfo },
+    { key:'memberCourses',  view:'viewMemberCourses',  label:'课程与余位', icon:'&#128218;', show:!staff, enter: loadMemberCourses },
+    { key:'memberBookings', view:'viewMemberBookings', label:'我的预约',   icon:'&#128197;', show:!staff, enter: loadMyBookings },
+    { key:'booking', view:'viewBooking', label:'约课管理',   icon:'&#128203;', show:staff,
+      enter: async () => { await loadMembers(); await loadCourses(); await loadBookings(); } },
+    { key:'pay',    view:'viewPay',    label:'收费与对账', icon:'&#128176;', show:staff,
+      enter: async () => { await loadOrders(''); await loadSettlements(); } },
+    { key:'risk',   view:'viewRisk',   label:'风险与预测', icon:'&#128200;', show:staff, enter: loadRisks },
+    { key:'perf',   view:'viewPerf',   label:'业绩与提成', icon:'&#127942;', show:staff, enter: loadCommissions },
+    { key:'report', view:'viewReport', label:'经营摘要',   icon:'&#128202;', show:staff,
+      enter: async () => { await loadSummary(); await loadAudit(); } },
+  ];
+  // 排课对管理员与店长均开放；数据重置与接口日志仅门店后台
+  if (staff) items.push({ key:'course', view:'viewCourse', label:'课程管理', icon:'&#127890;', show:true, enter: loadAdminCourses });
+  if (admin) items.push({ key:'system', view:'viewSystem', label:'系统管理', icon:'&#9881;',   show:true, enter: async () => {} });
+  if (staff) items.push({ key:'log',    view:'viewLog',    label:'接口日志', icon:'&#128220;', show:true, enter: async () => {} });
+  return items;
 }
-function switchTab(tab) {
-  const map = { booking: 'viewBooking', pay: 'viewPay', risk: 'viewRisk', perf: 'viewPerf',
-                report: 'viewReport', course: 'viewCourse', system: 'viewSystem' };
-  const ids = { booking: 'tabBooking', pay: 'tabPay', risk: 'tabRisk', perf: 'tabPerf',
-                report: 'tabReport', course: 'tabCourse', system: 'tabSystem' };
-  Object.keys(map).forEach(k => $(ids[k]).classList.toggle('active', k === tab));
-  showView(map[tab]);
-  if (tab === 'report') { loadSummary(); loadAudit(); }
-  if (tab === 'risk') loadRisks();
-  if (tab === 'perf') loadCommissions();
-  if (tab === 'course') loadAdminCourses();
+
+function renderSidebar() {
+  const staff = state.user && state.user.role === 'STAFF';
+  $('sidebar').innerHTML = `<div class="navtitle">${staff ? '门店后台' : '会员中心'} · 功能导航</div>`
+    + navItems().filter(i => i.show).map(i =>
+        `<button id="nav-${i.key}" onclick="navTo('${i.key}')">`
+        + `<span class="ic">${i.icon}</span>${i.label}</button>`).join('');
+}
+
+/** 切换页面：左侧高亮 + 只显示当前页 + 触发该页数据加载 */
+async function navTo(key) {
+  const items = navItems();
+  const it = items.find(i => i.key === key) || items.find(i => i.show);
+  if (!it) return;
+  ALL_VIEWS.forEach(v => $(v).classList.toggle('hidden', v !== it.view));
+  items.forEach(i => { const el = $('nav-' + i.key); if (el) el.classList.toggle('active', i.key === it.key); });
+  if (typeof it.enter === 'function') await it.enter();
+}
+
+/* 兼容旧调用 */
+function switchTab(tab) { return navTo(tab); }
+function showView(id) { ALL_VIEWS.forEach(v => $(v).classList.toggle('hidden', v !== id)); }
+
+/* ================= 通用弹窗 ================= */
+function openModal(html) { $('modalBox').innerHTML = html; $('modalMask').classList.remove('hidden'); }
+function closeModal() { $('modalMask').classList.add('hidden'); $('modalBox').innerHTML = ''; }
+
+/* ================= 登录身份选择 ================= */
+let loginIdentity = 'MEMBER';
+const IDENTITY_CN = { MEMBER: '会员', MANAGER: '店长', ADMIN: '管理员' };
+
+function pickIdentity(id) {
+  loginIdentity = id;
+  $('idMember').classList.toggle('sel', id === 'MEMBER');
+  $('idManager').classList.toggle('sel', id === 'MANAGER');
+  $('idAdmin').classList.toggle('sel', id === 'ADMIN');
+  $('idHint').textContent = '当前身份：' + IDENTITY_CN[id]
+      + (id === 'MEMBER' ? '（进入会员端）' : '（进入门店后台）');
+  $('loginMsg').textContent = '';
+}
+
+/** 身份与账号角色是否匹配 */
+function identityMatches(user, identity) {
+  const staff = user && user.role === 'STAFF';
+  if (identity === 'MEMBER') return !staff;
+  if (identity === 'MANAGER') return !!staff;
+  return !!staff && !!user.admin;
 }
 
 /* ================= 会员端 ================= */
@@ -490,14 +606,36 @@ async function loadMyInfo() {
         ｜风险等级：${m.riskLevel || '未评估'}</div>
     </div>`;
 }
+/* ---------- 搜索工具 ---------- */
+const norm = v => (v === null || v === undefined) ? '' : String(v).toLowerCase();
+function matchCourse(c, kw) {
+  if (!kw) return true;
+  return [c.name, c.code, c.room, c.coachId, c.type, c.status].map(norm).join(' ').includes(kw);
+}
+function clearSearch(inputId, renderFn) { $(inputId).value = ''; renderFn(); }
+
 async function loadMemberCourses() {
   const r = await api('GET', '/api/courses');
-  const list = Array.isArray(r.data) ? r.data : [];
+  state.memberCourses = Array.isArray(r.data) ? r.data : [];
+  renderMemberCourses();
+}
+
+/** 会员端可选课程（支持按名称 / 编号 / 教练 / 场地搜索） */
+function renderMemberCourses() {
+  const list = state.memberCourses || [];
   if (list.length === 0) { $('memberCourses').innerHTML = '暂无课程'; return; }
-  $('memberCourses').innerHTML = list.map(c => `
+  const kw = norm(($('memberCourseSearch').value || '').trim());
+  const shown = list.filter(c => matchCourse(c, kw));
+  if (shown.length === 0) {
+    $('memberCourses').innerHTML = '没有匹配「' + kw + '」的课程';
+    return;
+  }
+  $('memberCourses').innerHTML =
+    `<div class="m">共 ${shown.length} 门${kw ? '（全部 ' + list.length + ' 门）' : ''}</div>`
+    + shown.map(c => `
     <div class="card">
-      <div class="t">${c.name} · ${(c.startTime || '').slice(11, 16)}</div>
-      <div class="m">教练：${c.coachId || '待定'} ｜ 剩余名额：${c.remaining}/${c.capacity}
+      <div class="t">${c.name} · ${(c.startTime || '').slice(11, 16)} <span class="chip">${c.code || ''}</span></div>
+      <div class="m">教练：${c.coachId || '待定'} ｜ 场地：${c.room || '—'} ｜ 剩余名额：${c.remaining}/${c.capacity}
         ${c.remaining <= 0 ? '<span class="chip err">已满</span>' : ''}</div>
       <div><button class="btn" ${c.remaining > 0 ? '' : 'disabled'} onclick="memberBook('${c.id}')">选课</button></div>
     </div>`).join('');
@@ -527,10 +665,52 @@ async function loadMyBookings() {
     </div>`;
   }).join('');
 }
-async function myCheckin(id) {
-  const r = await api('POST', `/api/bookings/${id}/checkin`, {});
-  if (r.status !== 204) alert('签到失败：' + ((r.data && r.data.reason) || ''));
-  await loadMyBookings();
+/**
+ * 扫码签到：先生成签到二维码并弹窗出示，由门店扫码核销。
+ * 二维码内容形如 GYM-CHECKIN:{预约号}:{会员号}
+ */
+function myCheckin(id) {
+  const payload = 'GYM-CHECKIN:' + id + ':' + (state.user && state.user.memberId ? state.user.memberId : '');
+  openModal(
+    '<h3>扫码签到</h3>'
+    + '<div style="font-size:12px;color:var(--muted)">请把下方二维码出示给门店工作人员核销</div>'
+    + '<div class="qr">' + qrSvg(payload) + '</div>'
+    + '<div class="code">' + payload + '</div>'
+    + '<div class="actions"><button class="btn ghost" onclick="closeModal()">关闭</button></div>'
+    + '<div class="m" style="margin-top:10px">预约号 ' + id
+    + '　出示后由门店在「约课管理 → 扫码核销签到」完成核销</div>'
+  );
+}
+
+/**
+ * 门店扫码核销：解析二维码内容并调用签到接口。
+ * 兼容两种输入：完整内容 GYM-CHECKIN:{id}:{memberId}，或只输入预约号。
+ */
+async function scanCheckin() {
+  const raw = ($('checkinScanInput').value || '').trim();
+  const box = $('scanResult');
+  if (!raw) { box.innerHTML = '<span class="chip err">请先扫描或粘贴二维码内容</span>'; return; }
+
+  let bookingId = null;
+  const m = raw.match(/GYM-CHECKIN:(\d+):?(\d*)/i);
+  if (m) bookingId = m[1];
+  else if (/^\d+$/.test(raw)) bookingId = raw;
+
+  if (!bookingId) {
+    box.innerHTML = '<span class="chip err">无法识别的二维码内容</span> ' + raw;
+    return;
+  }
+
+  const r = await api('POST', `/api/bookings/${bookingId}/checkin`, { channel: 'scan' });
+  if (r.status === 204) {
+    box.innerHTML = '<span class="chip ok">核销成功</span> 预约号 ' + bookingId + ' 已完成签到（渠道：扫码）';
+    $('checkinScanInput').value = '';
+  } else {
+    box.innerHTML = '<span class="chip err">核销失败</span> '
+      + ((r.data && r.data.reason) || ('HTTP ' + r.status));
+  }
+  await loadBookings();
+  await loadCourses();
 }
 async function myCancel(id) {
   // 自愿退课：课程开始后不可退，由服务端校验
@@ -587,6 +767,12 @@ async function loadCourses() {
 /** 渲染课程与余位：余位来自课程，已报名名单来自预约数据（会员 ↔ 课程联动） */
 function renderCourses() {
   if (state.courses.length === 0) { $('courseBox').innerHTML = '暂无课程'; return; }
+  const kw = norm(($('staffCourseSearch').value || '').trim());
+  const shownCourses = state.courses.filter(c => matchCourse(c, kw));
+  if (shownCourses.length === 0) {
+    $('courseBox').innerHTML = '没有匹配「' + kw + '」的课程';
+    return;
+  }
   const roster = {};
   (state.bookings || []).forEach(b => {
     if (b.status !== 'booked') return;
@@ -597,7 +783,9 @@ function renderCourses() {
   const picked = pickedMemberId
       ? state.members.find(x => String(x.id) === String(pickedMemberId)) : null;
 
-  $('courseBox').innerHTML = state.courses.map(c => {
+  $('courseBox').innerHTML = `<div class="m">共 ${shownCourses.length} 门`
+      + (kw ? '（全部 ' + state.courses.length + ' 门）' : '') + '</div>'
+      + shownCourses.map(c => {
     const ids = roster[c.id] || [];
     const names = ids.map(i => nameOf[i] || ('#' + i)).join('、');
     return `<div class="card">
@@ -734,11 +922,25 @@ let editingCourseId = null;
 
 async function loadAdminCourses() {
   const r = await api('GET', '/api/courses');
-  const list = Array.isArray(r.data) ? r.data : [];
+  state.adminCourses = Array.isArray(r.data) ? r.data : [];
+  renderAdminCourses();
+}
+
+/** 课程维护列表（支持按名称 / 编号 / 教练 / 状态搜索） */
+function renderAdminCourses() {
+  const list = state.adminCourses || [];
   if (list.length === 0) { $('adminCourseBox').innerHTML = '暂无课程'; return; }
-  $('adminCourseBox').innerHTML = `<table>
+  const kw = norm(($('adminCourseSearch').value || '').trim());
+  const shown = list.filter(c => matchCourse(c, kw));
+  if (shown.length === 0) {
+    $('adminCourseBox').innerHTML = '没有匹配「' + kw + '」的课程';
+    return;
+  }
+  $('adminCourseBox').innerHTML =
+    `<div class="m">共 ${shown.length} 门${kw ? '（全部 ' + list.length + ' 门）' : ''}</div>`
+    + `<table>
     <tr><th>ID</th><th>编号</th><th>名称</th><th>类型</th><th>时间</th><th>已约/容量</th><th>状态</th><th>操作</th></tr>
-    ${list.map(c => {
+    ${shown.map(c => {
       const off = 'cancelled' === c.status;
       const cls = off ? 'err' : (c.remaining > 0 ? 'ok' : 'warn');
       const label = 'cancelled' === c.status ? '已下架'
@@ -960,6 +1162,257 @@ async function resetDemoData() {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !$('loginView').classList.contains('hidden')) doLogin();
 });
+
+/* ================= 二维码生成（纯 JS，无需任何外部库） =================
+ * 实现范围：Byte 模式、纠错级别 M、版本 1–10（容量约 213 字节）。
+ * 输出 SVG 字符串，可直接塞进 .qr 容器。
+ * ====================================================================== */
+const qrSvg = (function () {
+  /* ---- GF(256) 有限域 ---- */
+  const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+  (function () {
+    let x = 1;
+    for (let i = 0; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11d; }
+    for (let i = 255; i < 512; i++) EXP[i] = EXP[i - 255];
+  })();
+  const gmul = (a, b) => (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]];
+
+  function rsGenPoly(n) {
+    let g = [1];
+    for (let i = 0; i < n; i++) {
+      const ng = new Array(g.length + 1).fill(0);
+      for (let j = 0; j < g.length; j++) { ng[j] ^= g[j]; ng[j + 1] ^= gmul(g[j], EXP[i]); }
+      g = ng;
+    }
+    return g;
+  }
+  function rsEncode(data, ecLen) {
+    const gen = rsGenPoly(ecLen);
+    const buf = new Uint8Array(data.length + ecLen);
+    buf.set(data);
+    for (let i = 0; i < data.length; i++) {
+      const c = buf[i];
+      if (!c) continue;
+      for (let j = 0; j < gen.length; j++) buf[i + j] ^= gmul(gen[j], c);
+    }
+    return Array.prototype.slice.call(buf.subarray(data.length));
+  }
+
+  /* M 级：[每块纠错码字数, [[块数, 每块数据码字数], ...]] */
+  const RS_M = {
+    1: [10, [[1, 16]]], 2: [16, [[1, 28]]], 3: [26, [[1, 44]]], 4: [18, [[2, 32]]],
+    5: [24, [[2, 43]]], 6: [16, [[4, 27]]], 7: [18, [[4, 31]]],
+    8: [22, [[2, 38], [2, 39]]], 9: [22, [[3, 36], [2, 37]]], 10: [26, [[4, 43], [1, 44]]]
+  };
+  const ALIGN = {
+    1: [], 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30], 6: [6, 34],
+    7: [6, 22, 38], 8: [6, 24, 42], 9: [6, 26, 46], 10: [6, 28, 50]
+  };
+  const dataCw = v => RS_M[v][1].reduce((s, g) => s + g[0] * g[1], 0);
+
+  function chooseVersion(n) {
+    for (let v = 1; v <= 10; v++) {
+      const cntBits = v <= 9 ? 8 : 16;
+      if (4 + cntBits + n * 8 <= dataCw(v) * 8) return v;
+    }
+    return -1;
+  }
+
+  function encode(text, version) {
+    const bytes = Array.prototype.slice.call(new TextEncoder().encode(text));
+    const ecPerBlock = RS_M[version][0], groups = RS_M[version][1];
+    const cap = dataCw(version) * 8;
+    const cntBits = version <= 9 ? 8 : 16;
+    const bits = [];
+    const put = (val, len) => { for (let i = len - 1; i >= 0; i--) bits.push((val >>> i) & 1); };
+    put(4, 4);                       // Byte 模式指示符
+    put(bytes.length, cntBits);      // 字符计数
+    bytes.forEach(b => put(b, 8));
+    for (let i = 0; i < 4 && bits.length < cap; i++) bits.push(0);   // 终止符
+    while (bits.length % 8) bits.push(0);                            // 补齐字节
+    const pad = [0xEC, 0x11];
+    for (let i = 0; bits.length < cap; i++) put(pad[i % 2], 8);      // 填充码字
+
+    const cw = [];
+    for (let i = 0; i < bits.length; i += 8) {
+      let b = 0; for (let j = 0; j < 8; j++) b = (b << 1) | bits[i + j];
+      cw.push(b);
+    }
+
+    const blocks = []; let off = 0;
+    groups.forEach(g => {
+      for (let i = 0; i < g[0]; i++) {
+        const d = cw.slice(off, off + g[1]); off += g[1];
+        blocks.push({ d: d, e: rsEncode(Uint8Array.from(d), ecPerBlock) });
+      }
+    });
+    const out = [];
+    const maxD = Math.max.apply(null, blocks.map(b => b.d.length));
+    for (let i = 0; i < maxD; i++) blocks.forEach(b => { if (i < b.d.length) out.push(b.d[i]); });
+    for (let i = 0; i < ecPerBlock; i++) blocks.forEach(b => out.push(b.e[i]));
+    return out;
+  }
+
+  function build(version, cw) {
+    const size = 17 + version * 4;
+    const m = [], fixed = [];
+    for (let r = 0; r < size; r++) { m.push(new Array(size).fill(0)); fixed.push(new Array(size).fill(false)); }
+    const set = (r, c, v) => { if (r >= 0 && r < size && c >= 0 && c < size) { m[r][c] = v; fixed[r][c] = true; } };
+
+    /* 定位图案（含分隔符白边） */
+    [[0, 0], [0, size - 7], [size - 7, 0]].forEach(function (p) {
+      const r0 = p[0], c0 = p[1];
+      for (let r = -1; r <= 7; r++) for (let c = -1; c <= 7; c++) {
+        const ring = ((r === 0 || r === 6) && c >= 0 && c <= 6) || ((c === 0 || c === 6) && r >= 0 && r <= 6);
+        const core = r >= 2 && r <= 4 && c >= 2 && c <= 4;
+        set(r0 + r, c0 + c, (ring || core) ? 1 : 0);
+      }
+    });
+
+    /* 时序图案 */
+    for (let i = 8; i < size - 8; i++) {
+      if (!fixed[6][i]) set(6, i, i % 2 === 0 ? 1 : 0);
+      if (!fixed[i][6]) set(i, 6, i % 2 === 0 ? 1 : 0);
+    }
+
+    /* 校正图案 */
+    const al = ALIGN[version];
+    al.forEach(function (r0) {
+      al.forEach(function (c0) {
+        if (fixed[r0][c0]) return;
+        for (let r = -2; r <= 2; r++) for (let c = -2; c <= 2; c++) {
+          const edge = Math.max(Math.abs(r), Math.abs(c));
+          set(r0 + r, c0 + c, (edge === 2 || edge === 0) ? 1 : 0);
+        }
+      });
+    });
+
+    /* 预留格式信息区（值稍后写入）
+       注意：第 6 行/列的时序图案同样经过格式区，位置 (8,6) 与 (6,8) 属于时序图案，
+       必须跳过，否则会把时序图案覆盖掉（曾导致二维码结构不合法）。 */
+    for (let i = 0; i <= 8; i++) {
+      if (i !== 6) set(8, i, 0);
+      if (i !== 6) set(i, 8, 0);
+      set(size - 1 - i, 8, 0);
+    }
+    for (let i = 0; i < 8; i++) set(8, size - 1 - i, 0);
+    set(size - 8, 8, 1);   // 固定暗模块
+
+    /* 数据放置：自右下角起两列一组、蛇形上下 */
+    const bits = [];
+    cw.forEach(function (b) { for (let i = 7; i >= 0; i--) bits.push((b >> i) & 1); });
+    let bi = 0, up = true;
+    for (let col = size - 1; col > 0; col -= 2) {
+      if (col === 6) col = 5;                       // 跳过时序列
+      for (let k = 0; k < size; k++) {
+        const row = up ? size - 1 - k : k;
+        for (let d = 0; d < 2; d++) {
+          const c = col - d;
+          if (fixed[row][c]) continue;
+          m[row][c] = bi < bits.length ? bits[bi++] : 0;
+        }
+      }
+      up = !up;
+    }
+    return { m: m, fixed: fixed, size: size };
+  }
+
+  const MASKS = [
+    function (r, c) { return (r + c) % 2 === 0; },
+    function (r) { return r % 2 === 0; },
+    function (r, c) { return c % 3 === 0; },
+    function (r, c) { return (r + c) % 3 === 0; },
+    function (r, c) { return (Math.floor(r / 2) + Math.floor(c / 3)) % 2 === 0; },
+    function (r, c) { return ((r * c) % 2) + ((r * c) % 3) === 0; },
+    function (r, c) { return (((r * c) % 2) + ((r * c) % 3)) % 2 === 0; },
+    function (r, c) { return (((r + c) % 2) + ((r * c) % 3)) % 2 === 0; }
+  ];
+
+  /** 格式信息：纠错级别 M(=00) + 掩码号，BCH(15,5) 后与 0x5412 异或 */
+  function formatBits(mask) {
+    const d = mask;                       // M 级别高 2 位为 00
+    let v = d << 10;
+    for (let i = 4; i >= 0; i--) if (v & (1 << (i + 10))) v ^= 0b10100110111 << i;
+    return (((d << 10) | v) ^ 0b101010000010010) & 0x7FFF;
+  }
+
+  function applyMask(m, fixed, size, mask) {
+    const g = m.map(function (row) { return row.slice(); });
+    for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
+      if (!fixed[r][c] && MASKS[mask](r, c)) g[r][c] ^= 1;
+    }
+    const f = formatBits(mask);
+    for (let i = 0; i <= 14; i++) {
+      const bit = (f >> i) & 1;
+      if (i < 6) g[8][i] = bit;
+      else if (i < 8) g[8][i + 1] = bit;
+      else if (i === 8) g[7][8] = bit;
+      else g[14 - i][8] = bit;
+
+      if (i < 8) g[size - 1 - i][8] = bit;
+      else g[8][size - 15 + i] = bit;
+    }
+    g[size - 8][8] = 1;
+    return g;
+  }
+
+  function penalty(g, size) {
+    let p = 0;
+    /* N1：行/列连续同色 */
+    for (let i = 0; i < size; i++) {
+      let runR = 1, runC = 1;
+      for (let j = 1; j < size; j++) {
+        if (g[i][j] === g[i][j - 1]) runR++; else { if (runR >= 5) p += 3 + (runR - 5); runR = 1; }
+        if (g[j][i] === g[j - 1][i]) runC++; else { if (runC >= 5) p += 3 + (runC - 5); runC = 1; }
+      }
+      if (runR >= 5) p += 3 + (runR - 5);
+      if (runC >= 5) p += 3 + (runC - 5);
+    }
+    /* N2：2×2 同色块 */
+    for (let r = 0; r < size - 1; r++) for (let c = 0; c < size - 1; c++) {
+      const v = g[r][c];
+      if (v === g[r][c + 1] && v === g[r + 1][c] && v === g[r + 1][c + 1]) p += 3;
+    }
+    /* N3：特定图案 */
+    const P1 = [1, 0, 1, 1, 1, 0, 1, 0, 0, 0, 0], P2 = [0, 0, 0, 0, 1, 0, 1, 1, 1, 0, 1];
+    const eq = (arr, pat) => pat.every((v, i) => arr[i] === v);
+    for (let r = 0; r < size; r++) for (let c = 0; c <= size - 11; c++) {
+      const row = [], col = [];
+      for (let k = 0; k < 11; k++) { row.push(g[r][c + k]); col.push(g[c + k][r]); }
+      if (eq(row, P1) || eq(row, P2)) p += 40;
+      if (eq(col, P1) || eq(col, P2)) p += 40;
+    }
+    /* N4：暗模块比例偏离 50% */
+    let dark = 0;
+    for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) dark += g[r][c];
+    p += Math.floor(Math.abs(dark * 100 / (size * size) - 50) / 5) * 10;
+    return p;
+  }
+
+  /** 生成 SVG 字符串 */
+  return function (text) {
+    const len = new TextEncoder().encode(text).length;
+    const version = chooseVersion(len);
+    if (version < 0) {
+      return '<div style="color:#c0392b;font-size:12px;padding:20px">内容过长，无法生成二维码</div>';
+    }
+    const built = build(version, encode(text, version));
+    let best = null, bestP = Infinity;
+    for (let mask = 0; mask < 8; mask++) {
+      const g = applyMask(built.m, built.fixed, built.size, mask);
+      const p = penalty(g, built.size);
+      if (p < bestP) { bestP = p; best = g; }
+    }
+    const size = built.size, quiet = 2, dim = size + quiet * 2;
+    let path = '';
+    for (let r = 0; r < size; r++) for (let c = 0; c < size; c++) {
+      if (best[r][c]) path += 'M' + (c + quiet) + ' ' + (r + quiet) + 'h1v1h-1z';
+    }
+    return '<svg viewBox="0 0 ' + dim + ' ' + dim + '" xmlns="http://www.w3.org/2000/svg" '
+      + 'shape-rendering="crispEdges"><rect width="' + dim + '" height="' + dim + '" fill="#ffffff"/>'
+      + '<path d="' + path + '" fill="#111827"/></svg>';
+  };
+})();
 </script>
 </body>
 </html>

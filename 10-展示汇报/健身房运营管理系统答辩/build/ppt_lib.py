@@ -11,7 +11,7 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
 
 W, H = 1280, 720
-TOTAL = 24
+TOTAL = 25
 
 
 def E(px):

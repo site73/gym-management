@@ -183,29 +183,6 @@ def p16(prs):
     return sl
 
 
-def p17(prs):
-    """章节扉页 04"""
-    sl = blank(prs, C['bg'])
-    text(sl, 0, 130, W, 320, '04', size=240, bold=True, color=C['light'],
-         align='center', valign='middle')
-    text(sl, 140, 240, 1000, 36, '第四部分', size=22, color=C['blue'],
-         align='center', valign='middle')
-    text(sl, 140, 282, 1000, 86, '质量保障与测试', size=54, bold=True,
-         color=C['deep'], align='center', valign='middle')
-    rect(sl, 580, 378, 120, 4, fill=C['primary'])
-    text(sl, 200, 400, 880, 60,
-         '测试不只是"跑通了"：六层检查全部可复现，缺陷都能说出根因',
-         size=21, color=C['t2'], align='center', valign='middle', spacing=1.5)
-    labels = ['六层检查', '缺陷根因', '防回归']
-    x = 470
-    for lb in labels:
-        rect(sl, x, 486, 108, 40, fill='FFFFFF', line=C['line'], radius=20)
-        text(sl, x, 486, 108, 40, lb, size=19, color=C['t1'], align='center', valign='middle')
-        x += 122
-    footer(sl, '健身房运营管理系统 · 课程答辩', 19)
-    return sl
-
-
 def p22b(prs):
     """排课、选课与课程维护"""
     sl = blank(prs, C['white'])
@@ -285,24 +262,98 @@ def p22c(prs):
     return sl
 
 
+def p22d(prs):
+    """扫码签到与前端体验优化"""
+    sl = blank(prs, C['white'])
+    text(sl, 40, 24, 900, 46, '扫码签到与前端体验优化', size=32, bold=True,
+         color=C['deep'], valign='middle', spacing=1.0)
+    text(sl, 940, 24, 300, 46, '03 关键实现与业务规则', size=15, color=C['t3'],
+         align='right', valign='middle')
+    rect(sl, 40, 74, 1200, 1, fill=C['line2'])
+
+    rect(sl, 40, 96, 380, 470, fill=C['light2'], radius=12)
+    picture(sl, 'assets/checkin_qr.png', 70, 112, 320, 320, mode='contain')
+    text(sl, 60, 442, 340, 28, '图：真实二维码（现场可扫）', size=15, color=C['t3'],
+         align='center', valign='middle')
+    text(sl, 60, 474, 340, 78,
+         '二维码内容\nGYM-CHECKIN:{预约号}:{会员号}\n会员出示，门店扫码核销',
+         size=16, color=C['t2'], align='center', spacing=1.45)
+
+    rect(sl, 440, 96, 800, 226, fill=C['bg'], line=C['line'], radius=12)
+    text(sl, 462, 112, 760, 30, '扫码签到闭环（取代原先"点一下就完事"）', size=22,
+         bold=True, color=C['deep'], valign='middle')
+    steps = [
+        ('① 会员', '在「我的预约」点扫码签到 → 弹出二维码'),
+        ('② 门店', '在「约课管理 → 扫码核销签到」扫描或粘贴内容'),
+        ('③ 系统', '核销成功并记录渠道为扫码；重复核销返回状态冲突'),
+    ]
+    y = 152
+    for a, b in steps:
+        text(sl, 462, y, 78, 32, a, size=19, bold=True, color=C['primary'], valign='middle')
+        text(sl, 546, y, 670, 32, b, size=17, color=C['t1'], valign='middle')
+        y += 46
+
+    rect(sl, 440, 334, 800, 232, fill='FFFFFF', line=C['line'], radius=12)
+    text(sl, 462, 350, 760, 30, '前端体验优化（4 项）', size=22, bold=True,
+         color=C['deep'], valign='middle')
+    opts = [
+        '左侧导航 + 独立页面：会员 3 页 / 门店 8 页，按角色渲染菜单',
+        '身份选择登录：先选会员 / 店长 / 管理员，再输入账号密码',
+        '选课搜索：按课程名称 / 编号 / 教练 / 场地实时过滤',
+        '二维码由前端内嵌生成器产出，不依赖外部库，也不依赖网络',
+    ]
+    y = 388
+    for o in opts:
+        text(sl, 462, y, 760, 36, '· ' + o, size=17, color=C['t2'], valign='middle')
+        y += 40
+
+    conclusion(sl, 40, 578, 1200, '判断',
+               '签到从"点一下"升级为完整闭环；前端从单页堆叠改为分角色导航，演示路径更清晰', h=64)
+    footer(sl, '来源：系统测试文档 · J 扫码签到、H 身份与导航、I 搜索', 19)
+    return sl
+
+
+def p17(prs):
+    """章节扉页 04"""
+    sl = blank(prs, C['bg'])
+    text(sl, 0, 130, W, 320, '04', size=240, bold=True, color=C['light'],
+         align='center', valign='middle')
+    text(sl, 140, 240, 1000, 36, '第四部分', size=22, color=C['blue'],
+         align='center', valign='middle')
+    text(sl, 140, 282, 1000, 86, '质量保障与测试', size=54, bold=True,
+         color=C['deep'], align='center', valign='middle')
+    rect(sl, 580, 378, 120, 4, fill=C['primary'])
+    text(sl, 200, 400, 880, 60,
+         '测试不只是"跑通了"：六层检查全部可复现，缺陷都能说出根因',
+         size=21, color=C['t2'], align='center', valign='middle', spacing=1.5)
+    labels = ['六层检查', '缺陷根因', '防回归']
+    x = 470
+    for lb in labels:
+        rect(sl, x, 486, 108, 40, fill='FFFFFF', line=C['line'], radius=20)
+        text(sl, x, 486, 108, 40, lb, size=19, color=C['t1'], align='center', valign='middle')
+        x += 122
+    footer(sl, '健身房运营管理系统 · 课程答辩', 20)
+    return sl
+
+
 def p18(prs):
     """200 项六层检查"""
     sl = blank(prs, C['white'])
-    header(sl, '226 项检查，覆盖六个层次')
+    header(sl, '243 项检查，覆盖七个层次')
     rect(sl, 40, 108, 420, 452, fill=C['light'], line=None, radius=12)
-    text(sl, 60, 146, 380, 152, '226', size=116, bold=True, color=C['deep'],
+    text(sl, 60, 146, 380, 152, '243', size=116, bold=True, color=C['deep'],
          valign='middle', spacing=1.0)
     text(sl, 60, 306, 380, 40, '项自动化检查全部通过', size=22, color=C['t1'], valign='middle')
     text(sl, 60, 356, 380, 180,
-         '从单元测试到真实浏览器点击，\n每一层都有可复现的执行命令与\n报告文件，答辩现场可逐条演示。',
+         '从单元测试到真实浏览器点击、再到二维码反解，\n每一层都有可复现的执行命令与\n报告文件，答辩现场可逐条演示。',
          size=19, color=C['t2'], spacing=1.6)
     rows = [
         ('Java 单元 · 架构守卫 · 行为驱动', '73'),
         ('集成测试（登录 / 权限 / 全流程）', '68'),
         ('前端静态检查（防按钮无响应）', '5'),
-        ('真实浏览器测试（自动点击验证）', '44'),
-        ('参考实现行为驱动（对照）', '18'),
-        ('参考实现接口冒烟（对照）', '18'),
+        ('真实浏览器测试（含身份与二维码）', '56'),
+        ('二维码结构校验（反解还原）', '5'),
+        ('参考实现 BDD + 接口冒烟（对照）', '18 ／ 18'),
     ]
     y = 108
     for name, cnt in rows:
@@ -313,7 +364,7 @@ def p18(prs):
         y += 76
     conclusion(sl, 40, 578, 1200, '判断',
                '测试要能挡住"点了没反应"这类问题，所以既做静态检查，也做真实浏览器点击', h=62)
-    footer(sl, '来源：五份测试报告文件（verify/ 与 app/ 目录）', 20)
+    footer(sl, '来源：五份测试报告文件（verify/ 与 app/ 目录）', 21)
     return sl
 
 
@@ -349,7 +400,7 @@ def p19(prs):
         y += 118
     conclusion(sl, 40, 598, 1200, '判断',
                '能复现、能定位、能防回归，缺陷才是资产；只写"已修复"等于没讲', h=46)
-    footer(sl, '来源：系统测试文档 · 缺陷记录章节', 21)
+    footer(sl, '来源：系统测试文档 · 缺陷记录章节', 22)
     return sl
 
 
@@ -372,7 +423,7 @@ def p20(prs):
         rect(sl, x, 486, 108, 40, fill='FFFFFF', line=C['line'], radius=20)
         text(sl, x, 486, 108, 40, lb, size=19, color=C['t1'], align='center', valign='middle')
         x += 122
-    footer(sl, '健身房运营管理系统 · 课程答辩', 22)
+    footer(sl, '健身房运营管理系统 · 课程答辩', 23)
     return sl
 
 
@@ -387,7 +438,7 @@ def p21(prs):
             'S2 收费：下单、支付、回调幂等、异常订单、对账',
             'S4 预警：流失风险、爽约预测、新会员跟进',
             '登录与角色鉴权（服务端强制，越权拦截已测）',
-            '六层 226 项自动化检查 + 一键启动脚本']
+            '七层 243 项自动化检查 + 一键启动脚本']
     y = 176
     for d in done:
         rect(sl, 62, y, 656, 66, fill='FFFFFF', line=C['line'], radius=8)
@@ -409,7 +460,7 @@ def p21(prs):
          size=19, color=C['t1'], spacing=1.55)
     conclusion(sl, 40, 578, 1200, '下一步',
                '先补 S5 业务逻辑，再把会话改为 JWT，最后接入支付沙箱与 CI', h=62)
-    footer(sl, '来源：代码实现与测试报告 · 开放问题台账', 23)
+    footer(sl, '来源：代码实现与测试报告 · 开放问题台账', 24)
     return sl
 
 

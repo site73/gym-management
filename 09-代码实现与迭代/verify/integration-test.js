@@ -396,7 +396,11 @@ const login = async (u, p) => call('POST', '/api/auth/login', { username: u, pas
 
   const page = await fetch(BASE + '/');
   const html = await page.text();
-  check(E, '统一页面可访问', '200 + 登录入口', `HTTP ${page.status}`, page.status === 200 && html.includes('登录后将按账号角色进入对应页面'));
+  check(E, '统一页面可访问', '200 + 登录入口 + 身份选择',
+        `HTTP ${page.status} 身份选择=${html.includes('idMember') && html.includes('idManager') && html.includes('idAdmin')}`,
+        page.status === 200 && html.includes('选择登录身份')
+        && html.includes('idMember') && html.includes('idManager') && html.includes('idAdmin')
+        && html.includes('id="sidebar"'));
 
   console.log('\n------------------------------------------------------------');
   console.log(` 结果：通过 ${pass} / 失败 ${fail} / 共 ${pass + fail}`);

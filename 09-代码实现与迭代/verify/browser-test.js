@@ -112,6 +112,7 @@ async function waitFor(fn, timeout = 15000) {
 
     /* ---------- B 会员端 ---------- */
     const B = 'B 会员端';
+    await page.click('#idMember');
     await page.fill('#loginUser', 'member1');
     await page.fill('#loginPass', '123456');
     await page.click('#loginBtn');
@@ -120,27 +121,41 @@ async function waitFor(fn, timeout = 15000) {
           `角色=${await page.textContent('#roleTag')}`,
           (await page.textContent('#roleTag')).includes('会员端'));
 
-    check(B, '会员端不显示门店标签页', '隐藏', await page.isVisible('#staffTabs') ? '仍可见' : '已隐藏',
-          !(await page.isVisible('#staffTabs')));
-    check(B, '会员端不显示接口调用日志（按需求）', '隐藏', await page.isVisible('#logPanel') ? '仍可见' : '已隐藏',
-          !(await page.isVisible('#logPanel')));
+    check(B, '会员端侧边栏只显示会员菜单', '无门店菜单',
+          await page.isVisible('#nav-booking') ? '仍可见门店菜单' : '仅会员菜单',
+          !(await page.isVisible('#nav-booking')));
+    check(B, '会员端不显示接口调用日志（按需求）', '隐藏', await page.isVisible('#nav-log') ? '仍可见' : '已隐藏',
+          !(await page.isVisible('#nav-log')));
 
+    // 「我的信息」默认页
     const infoText = await page.textContent('#memberInfo');
     check(B, '会员信息加载成功', '含昵称与会籍状态', infoText.replace(/\s+/g, ' ').slice(0, 40),
           infoText.includes('会籍状态'));
 
+    // 左侧导航切到「课程与余位」（独立页面）
+    await page.click('#nav-memberCourses');
+    await waitFor(async () => (await page.locator('#memberCourses .card').count()) >= 1);
     const courseCards = await page.locator('#memberCourses .card').count();
-    check(B, '课程列表渲染', '≥1 张课程卡', `${courseCards} 张`, courseCards >= 1);
+    check(B, '切到「课程与余位」并渲染课程', '≥1 张课程卡', `${courseCards} 张`, courseCards >= 1);
 
-    // 约课
+    // 先记录「我的预约」当前数量
+    await page.click('#nav-memberBookings');
+    await sleep(900);
     const beforeCount = await page.locator('#myBookings .card').count();
+
+    // 回到课程页选课
+    await page.click('#nav-memberCourses');
+    await waitFor(async () => (await page.locator('#memberCourses .card').count()) >= 1);
     await page.locator('#memberCourses .card button').first().click();
+    await sleep(1400);
+
+    await page.click('#nav-memberBookings');
     const grew = await waitFor(async () => (await page.locator('#myBookings .card').count()) > beforeCount);
     const afterCount = await page.locator('#myBookings .card').count();
     check(B, '点击「选课」有响应', '弹出提示 + 预约列表增加', `弹窗=${dialogs.length} 预约 ${beforeCount}→${afterCount}`,
           dialogs.length >= 1 && grew);
 
-    // 自愿退课
+    // 自愿退课（在「我的预约」页）
     const cancelBtn = page.locator('#myBookings .card button:has-text("退课")').first();
     const hasCancel = await cancelBtn.count() > 0;
     if (hasCancel) {
@@ -159,15 +174,16 @@ async function waitFor(fn, timeout = 15000) {
 
     /* ---------- C 门店后台 ---------- */
     const C = 'C 门店后台';
+    await page.click('#idManager');
     await page.fill('#loginUser', 'manager');
     await page.fill('#loginPass', '123456');
     await page.click('#loginBtn');
-    await page.waitForSelector('#staffTabs:not(.hidden)', { timeout: 10000 });
+    await page.waitForSelector('#nav-booking', { timeout: 10000 });
     check(C, '店长登录后进入门店后台', '标签页可见 + 角色含"门店后台"',
           `角色=${await page.textContent('#roleTag')}`,
           (await page.textContent('#roleTag')).includes('门店后台'));
-    check(C, '门店后台显示接口调用日志', '可见', await page.isVisible('#logPanel') ? '可见' : '隐藏',
-          await page.isVisible('#logPanel'));
+    check(C, '门店后台左侧有「接口日志」页面入口', '可见', await page.isVisible('#nav-log') ? '可见' : '隐藏',
+          await page.isVisible('#nav-log'));
 
     await waitFor(async () => (await page.locator('#memberBox .member-pick').count()) >= 4);
     const memberRows = await page.locator('#memberBox .member-pick').count();
@@ -178,7 +194,7 @@ async function waitFor(fn, timeout = 15000) {
     check(C, '预约列表渲染', '≥2 行（含表头）', `${bookingRows} 行`, bookingRows >= 2);
 
     // 逐标签切换
-    const tabs = [['tabPay', '收费与对账'], ['tabRisk', '风险与预测'], ['tabPerf', '业绩与提成'], ['tabReport', '经营摘要 / 审计']];
+    const tabs = [['nav-pay', '收费与对账'], ['nav-risk', '风险与预测'], ['nav-perf', '业绩与提成'], ['nav-report', '经营摘要']];
     for (const [id, label] of tabs) {
       await page.click('#' + id);
       const onePanel = await waitFor(async () => (await page.locator('.views section:not(.hidden)').count()) === 1);
@@ -187,7 +203,7 @@ async function waitFor(fn, timeout = 15000) {
     }
 
     // 风险扫描与预测
-    await page.click('#tabRisk');
+    await page.click('#nav-risk');
     await page.waitForSelector('button:has-text("执行风险扫描")', { state: 'visible', timeout: 10000 });
     await page.click('button:has-text("执行风险扫描")');
     const riskOk = await waitForText(page, '#riskBox', '会员总数');
@@ -198,35 +214,36 @@ async function waitFor(fn, timeout = 15000) {
     check(C, '点击「预测爽约概率」有响应', '显示阈值或结果', predOk ? '已渲染' : '无内容', predOk);
 
     // 提成
-    await page.click('#tabPerf');
+    await page.click('#nav-perf');
     await page.click('button:has-text("核算近 N 天提成")');
     const perfOk = await waitForText(page, '#commissionBox', '提成比例');
     check(C, '点击「核算提成」有响应', '显示提成比例', perfOk ? '已渲染' : '无内容', perfOk);
 
     // 摘要与审计
-    await page.click('#tabReport');
+    await page.click('#nav-report');
     const summaryOk = await waitForText(page, '#summaryBox', '会员总数');
     const auditOk = await waitForText(page, '#auditBox', '动作');
     check(C, '经营摘要自动加载', '显示 KPI', summaryOk ? '已渲染' : '无内容', summaryOk);
     check(C, '审计日志自动加载', '有记录', auditOk ? '已渲染' : '无内容', auditOk);
 
-    check(C, '店长看不到系统管理标签（仅管理员）', '隐藏', await page.isVisible('#tabSystem') ? '仍可见' : '已隐藏',
-          !(await page.isVisible('#tabSystem')));
-    check(C, '店长能看到课程管理标签（可排课）', '可见', await page.isVisible('#tabCourse') ? '可见' : '隐藏',
-          await page.isVisible('#tabCourse'));
+    check(C, '店长看不到系统管理（仅管理员）', '隐藏', await page.isVisible('#nav-system') ? '仍可见' : '已隐藏',
+          !(await page.isVisible('#nav-system')));
+    check(C, '店长能看到课程管理（可排课）', '可见', await page.isVisible('#nav-course') ? '可见' : '隐藏',
+          await page.isVisible('#nav-course'));
 
     /* ---------- D 管理员 ---------- */
     const D = 'D 管理员';
     await page.click('header .user button');
     await page.waitForSelector('#loginBtn:visible', { timeout: 8000 });
+    await page.click('#idAdmin');
     await page.fill('#loginUser', 'admin');
     await page.fill('#loginPass', '123456');
     await page.click('#loginBtn');
-    await page.waitForSelector('#staffTabs:not(.hidden)', { timeout: 10000 });
-    check(D, '管理员看到系统管理标签', '可见', await page.isVisible('#tabSystem') ? '可见' : '隐藏',
-          await page.isVisible('#tabSystem'));
+    await page.waitForSelector('#nav-booking', { timeout: 10000 });
+    check(D, '管理员看到系统管理', '可见', await page.isVisible('#nav-system') ? '可见' : '隐藏',
+          await page.isVisible('#nav-system'));
 
-    await page.click('#tabSystem');
+    await page.click('#nav-system');
     await sleep(500);
     await page.click('button:has-text("重置数据")');
     await sleep(2000);
@@ -236,7 +253,7 @@ async function waitFor(fn, timeout = 15000) {
 
   /* ---------- E 课程管理（管理员） ---------- */
   const E = 'E 课程管理';
-  await page.click('#tabCourse');
+  await page.click('#nav-course');
   await waitForText(page, '#adminCourseBox', 'C001');
   const rowsBefore = await page.locator('#adminCourseBox tr').count();
   check(E, '课程列表加载', '含表头与课程行', `${rowsBefore} 行`, rowsBefore >= 2);
@@ -279,11 +296,12 @@ async function waitFor(fn, timeout = 15000) {
   /* ---------- G 店长后台：会员 ↔ 课程余位联动 ---------- */
   await page.click('header .user button');
   await page.waitForSelector('#loginBtn:visible', { timeout: 8000 });
-  await page.fill('#loginUser', 'manager');
+  await page.click('#idManager');
+    await page.fill('#loginUser', 'manager');
   await page.fill('#loginPass', '123456');
   await page.click('#loginBtn');
-  await page.waitForSelector('#staffTabs:not(.hidden)', { timeout: 10000 });
-  await page.click('#tabBooking');
+  await page.waitForSelector('#nav-booking', { timeout: 10000 });
+  await page.click('#nav-booking');
   await waitForText(page, '#memberBox', '张三');
 
   const hintBefore = await page.textContent('#selectedHint');
@@ -308,6 +326,119 @@ async function waitFor(fn, timeout = 15000) {
   check(F2, '代客约课后已报名名单联动更新', '名单人数增加',
         `${rosterBefore.trim().slice(0, 22)} → ${rosterAfter.trim().slice(0, 22)}`,
         rosterBefore !== rosterAfter);
+
+  /* ---------- H 身份选择与左侧导航 ---------- */
+  const H = 'H 身份与导航';
+  // 选「店长」身份却用会员账号登录 → 应被拦下
+  await page.click('header .user button');
+  await page.waitForSelector('#loginBtn:visible', { timeout: 8000 });
+  await page.click('#idManager');
+  await page.fill('#loginUser', 'member1');
+  await page.fill('#loginPass', '123456');
+  await page.click('#loginBtn');
+  await sleep(800);
+  const mismatchMsg = await page.textContent('#loginMsg');
+  const stillLogin = await page.isVisible('#loginBtn');
+  check(H, '身份与账号不符时被拦下', '提示身份不匹配且仍在登录页',
+        `msg="${(mismatchMsg || '').slice(0, 26)}"`, stillLogin && mismatchMsg.includes('身份'));
+
+  // 正确身份可登录
+  await page.click('#idManager');
+  await page.fill('#loginUser', 'manager');
+  await page.fill('#loginPass', '123456');
+  await page.click('#loginBtn');
+  await page.waitForSelector('#nav-booking', { timeout: 10000 });
+  const navCount = await page.locator('#sidebar button').count();
+  check(H, '左侧导航按角色渲染', '店长看到 ≥6 个菜单项', `${navCount} 项`, navCount >= 6);
+
+  const onlyOnePanel = await page.locator('.views section:not(.hidden)').count();
+  check(H, '同一时刻只显示一个页面', '1 个', `${onlyOnePanel} 个`, onlyOnePanel === 1);
+
+  /* ---------- I 选课搜索 ---------- */
+  const I = 'I 搜索与二维码';
+  await page.click('#nav-booking');
+  await waitFor(async () => (await page.locator('#courseBox .card').count()) > 0);
+  const allCourses = await page.locator('#courseBox .card').count();
+  await page.fill('#staffCourseSearch', '瑜伽');
+  await sleep(300);
+  const filtered = await page.locator('#courseBox .card').count();
+  const filterText = await page.textContent('#courseBox');
+  check(I, '门店课程搜索生效', '结果少于全部且含"瑜伽"',
+        `${allCourses} → ${filtered} 门`, filtered < allCourses && filterText.includes('瑜伽'));
+
+  await page.fill('#staffCourseSearch', 'zzz-不存在');
+  await sleep(300);
+  const noneText = await page.textContent('#courseBox');
+  check(I, '无匹配时给出提示', '含"没有匹配"', noneText.slice(0, 24), noneText.includes('没有匹配'));
+  await page.click('#staffCourseClear');
+  await sleep(300);
+  const restored = await page.locator('#courseBox .card').count();
+  check(I, '清空搜索后恢复全部', '等于全部数量', `${restored} 门`, restored === allCourses);
+
+  /* ---------- J 扫码签到二维码与核销 ---------- */
+  const J = 'J 扫码签到';
+  await page.click('header .user button');
+  await page.waitForSelector('#loginBtn:visible', { timeout: 8000 });
+  await page.click('#idMember');
+  await page.fill('#loginUser', 'member1');
+  await page.fill('#loginPass', '123456');
+  await page.click('#loginBtn');
+  await page.waitForSelector('#nav-memberBookings', { timeout: 10000 });
+  await page.click('#nav-memberBookings');
+  await waitFor(async () => (await page.locator('#myBookings .card').count()) > 0);
+
+  // 没有可签到的预约时先选一门课
+  let hasCheckin = await page.locator('#myBookings button:has-text("扫码签到"):not([disabled])').count();
+  if (hasCheckin === 0) {
+    await page.click('#nav-memberCourses');
+    await waitFor(async () => (await page.locator('#memberCourses .card').count()) > 0);
+    await page.locator('#memberCourses button:has-text("选课")').first().click();
+    await sleep(1200);
+    await page.click('#nav-memberBookings');
+    await waitFor(async () => (await page.locator('#myBookings .card').count()) > 0);
+  }
+
+  await page.locator('#myBookings button:has-text("扫码签到")').first().click();
+  await page.waitForSelector('#modalMask:not(.hidden)', { timeout: 5000 });
+  const modalVisible = await page.isVisible('#modalBox');
+  const svgCount = await page.locator('#modalBox .qr svg').count();
+  const codeText = (await page.textContent('#modalBox .code')) || '';
+  check(J, '点击「扫码签到」弹出二维码', '弹窗可见 + 含 SVG 二维码',
+        `弹窗=${modalVisible} svg=${svgCount}`, modalVisible && svgCount === 1);
+  check(J, '二维码内容为签到凭据', '形如 GYM-CHECKIN:{预约号}:{会员号}',
+        codeText.slice(0, 30),
+        codeText.trim().startsWith('GYM-CHECKIN:') && codeText.trim().split(':').length === 3);
+
+  const qrModules = await page.locator('#modalBox .qr svg path').count();
+  check(J, '二维码图形已绘制', 'path 存在（模块数 > 0）', `${qrModules} 个 path`, qrModules >= 1);
+
+  await page.click('#modalBox button:has-text("关闭")');
+  await sleep(300);
+  check(J, '关闭弹窗', '弹窗隐藏', await page.isVisible('#modalMask') ? '仍可见' : '已关闭',
+        !(await page.isVisible('#modalMask')));
+
+  // 门店扫码核销
+  const payload = codeText.trim();
+  await page.click('header .user button');
+  await page.waitForSelector('#loginBtn:visible', { timeout: 8000 });
+  await page.click('#idManager');
+  await page.fill('#loginUser', 'manager');
+  await page.fill('#loginPass', '123456');
+  await page.click('#loginBtn');
+  await page.waitForSelector('#nav-booking', { timeout: 10000 });
+  await page.click('#nav-booking');
+  await sleep(1000);
+  await page.fill('#checkinScanInput', payload);
+  await page.click('button:has-text("核销签到")');
+  const scanOk = await waitForText(page, '#scanResult', '核销成功');
+  check(J, '门店扫码核销成功', '提示"核销成功"',
+        (await page.textContent('#scanResult')).slice(0, 34), scanOk);
+
+  await page.fill('#checkinScanInput', payload);
+  await page.click('button:has-text("核销签到")');
+  await sleep(900);
+  const dupResult = await page.textContent('#scanResult');
+  check(J, '重复核销被拒绝', '提示核销失败（状态冲突）', dupResult.slice(0, 34), dupResult.includes('核销失败'));
 
   /* ---------- F 运行时健康 ---------- */
   const F = 'F 运行时健康';
