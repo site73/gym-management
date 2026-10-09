@@ -49,6 +49,13 @@ public final class AuthContext {
         return requested;
     }
 
+    /** 要求超级管理员角色（最高权限：账号管理） */
+    public static AuthSession requireSuperAdmin() {
+        AuthSession s = current();
+        if (!s.isSuperAdmin()) throw AuthException.forbidden("该操作仅限超级管理员");
+        return s;
+    }
+
     /** 要求管理员角色 */
     public static AuthSession requireAdmin() {
         AuthSession s = current();

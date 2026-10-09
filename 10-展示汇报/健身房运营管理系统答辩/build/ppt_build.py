@@ -224,7 +224,7 @@ def p08(prs):
 def p09(prs):
     """26 张表与 9 次迁移收敛"""
     sl = blank(prs, C['white'])
-    header(sl, '26 张表与 9 次迁移收敛')
+    header(sl, '26 张表与 12 次迁移收敛')
     picture(sl, 'assets/db_overview.png', 300, 128, 680, 420, mode='contain')
     text(sl, 330, 556, 620, 30, '图：数据库表结构总览（项目真实产出）', size=15,
          color=C['t3'], align='center', valign='middle')
@@ -235,10 +235,10 @@ def p09(prs):
     text(sl, 58, 268, 204, 46, '覆盖会籍 / 约课 / 收费 / 预警 / 设备',
          size=16, color=C['t2'], spacing=1.4)
     card(sl, 40, 348, 240, 200, fill='FFFFFF', line=C['line'])
-    text(sl, 58, 370, 204, 78, '9', size=62, bold=True, color=C['primary'],
+    text(sl, 58, 370, 204, 78, '12', size=62, bold=True, color=C['primary'],
          valign='middle', spacing=1.0)
     text(sl, 58, 454, 204, 34, '次版本化迁移', size=21, color=C['t1'], valign='middle')
-    text(sl, 58, 488, 204, 46, 'V1–V10，结构变更全部可回放', size=16,
+    text(sl, 58, 488, 204, 46, 'V1–V12，结构变更全部可回放', size=16,
          color=C['t2'], spacing=1.4)
     card(sl, 1000, 128, 240, 200, fill=C['light2'], line=None)
     text(sl, 1018, 152, 204, 34, '规则参数外置', size=22, bold=True,

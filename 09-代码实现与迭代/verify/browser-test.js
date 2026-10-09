@@ -95,7 +95,7 @@ async function waitFor(fn, timeout = 15000) {
     await page.goto(BASE + '/', { waitUntil: 'networkidle' });
     check(A, '登录页渲染', '登录按钮可见', await page.isVisible('#loginBtn'), await page.isVisible('#loginBtn'));
     const accountRows = await page.locator('.accounts tr').count();
-    check(A, '展示演示账号', '4 个账号', `${accountRows} 个`, accountRows === 4);
+    check(A, '展示演示账号（会员/店长/管理员/超管/教练）', '6 个账号', `${accountRows} 个`, accountRows === 6);
 
     // 点击"填充"按钮
     await page.locator('.accounts button').first().click();
@@ -516,7 +516,8 @@ async function waitFor(fn, timeout = 15000) {
         await page.textContent('#roleTag'), (await page.textContent('#roleTag')).includes('教练端'));
 
   const coachNavCount = await page.locator('#sidebar button').count();
-  check(L, '教练端导航只有教练菜单', '2 项（我的课表 / 学员名单）', `${coachNavCount} 项`, coachNavCount === 2);
+  check(L, '教练端导航只有教练菜单', '3 项（我的课表 / 授课课程 / 学员名单）', `${coachNavCount} 项`,
+        coachNavCount === 3);
 
   const coachNavText = await page.textContent('#sidebar');
   check(L, '教练端看不到门店菜单', '无约课管理/场馆管理等',
@@ -645,6 +646,157 @@ async function waitFor(fn, timeout = 15000) {
       check(N, '点「下一页」列表内容变化', '仅一页时按钮禁用', '当前只有一页（按钮已禁用）', true);
     }
   }
+
+  /* ---------- O 周课表（三视角） ---------- */
+  const O = 'O 周课表';
+  await relogin('idMember', 'member1');
+  await page.waitForSelector('#nav-timetable', { timeout: 10000 });
+  await page.click('#nav-timetable');
+  await waitFor(async () => (await page.locator('#ttCourseBox .tt-grid').count()) > 0);
+  check(O, '会员端「我的课表」渲染 7 列周视图', '7 个日列',
+        `${await page.locator('#ttCourseBox .tt-day').count()} 列`,
+        await page.locator('#ttCourseBox .tt-day').count() === 7);
+
+  const ttOwnerM = await page.textContent('#ttOwner');
+  check(O, '会员看到的是本人课表', 'owner 含本人姓名', ttOwnerM.replace(/\s+/g, ' ').slice(0, 40),
+        ttOwnerM.includes('张三'));
+
+  check(O, '会员端不显示门店筛选器', '#ttFilters 隐藏',
+        await page.isVisible('#ttFilters') ? '可见' : '隐藏', !(await page.isVisible('#ttFilters')));
+
+  const ttWeekBefore = await page.textContent('#ttWeekLabel');
+  await page.click('#viewTimetable button:has-text("下一周")');
+  await sleep(900);
+  const ttWeekAfter = await page.textContent('#ttWeekLabel');
+  check(O, '「下一周」切换周区间', '区间发生变化', `${ttWeekBefore} → ${ttWeekAfter}`,
+        ttWeekBefore !== ttWeekAfter && !!ttWeekAfter);
+  await page.click('#viewTimetable button:has-text("本周")');
+  await sleep(900);
+  check(O, '「本周」回到当前周', '与初始区间一致',
+        `${await page.textContent('#ttWeekLabel')}`, (await page.textContent('#ttWeekLabel')) === ttWeekBefore);
+
+  // 教练视角（等渲染结果真正变成教练的，否则读到的是上一个角色残留的 DOM）
+  await relogin('idCoach', 'coach1');
+  await page.waitForSelector('#nav-timetableCourse', { timeout: 10000 });
+  await page.click('#nav-timetableCourse');
+  await waitFor(async () => (await page.textContent('#ttOwner')).includes('教练'));
+  const ttOwnerC = await page.textContent('#ttOwner');
+  check(O, '教练看到本人授课课表 + 全店场馆占用', '含教练名与「场馆占用」',
+        ttOwnerC.replace(/\s+/g, ' ').slice(0, 46),
+        ttOwnerC.includes('王教练') && ttOwnerC.includes('场馆占用'));
+
+  // 门店视角
+  await relogin('idManager', 'manager');
+  await page.waitForSelector('#nav-timetableStaff', { timeout: 10000 });
+  await page.click('#nav-timetableStaff');
+  await waitFor(async () => (await page.textContent('#ttOwner')).includes('全店课程表'));
+  const ttOwnerS = await page.textContent('#ttOwner');
+  check(O, '店长看到全店课程表 + 场馆占用课表', '含「全店课程表」与「场馆占用」',
+        ttOwnerS.replace(/\s+/g, ' ').slice(0, 46),
+        ttOwnerS.includes('全店课程表') && ttOwnerS.includes('场馆占用'));
+
+  check(O, '门店端显示会员/教练/场馆三个筛选器', '#ttFilters 可见',
+        await page.isVisible('#ttFilters') ? '可见' : '隐藏', await page.isVisible('#ttFilters'));
+
+  const coachOpts = await page.locator('#ttCoachFilter option').count();
+  check(O, '教练筛选下拉已填充', '≥2 项（含"全部教练"）', `${coachOpts} 项`, coachOpts >= 2);
+
+  const ttCountBefore = await page.locator('#ttCourseBox .tt-item').count();
+  await page.selectOption('#ttCoachFilter', { index: 1 });
+  await waitFor(async () => (await page.textContent('#ttOwner')).includes('教练课表'));
+  const ttOwnerF = await page.textContent('#ttOwner');
+  check(O, '按教练筛选后课表归属变化', 'owner 变为「教练课表（某某）」',
+        ttOwnerF.replace(/\s+/g, ' ').slice(0, 40), ttOwnerF.includes('教练课表（'));
+
+  const ttCountFiltered = await page.locator('#ttCourseBox .tt-item').count();
+  check(O, '筛选后条目数不超过全量', '≤ 筛选前', `${ttCountBefore} → ${ttCountFiltered}`,
+        ttCountFiltered <= ttCountBefore);
+
+  await page.click('#ttFilters button:has-text("清空筛选")');
+  await waitFor(async () => (await page.textContent('#ttOwner')).includes('全店课程表'));
+  const ttCountAfter = await page.locator('#ttCourseBox .tt-item').count();
+  check(O, '清空筛选后恢复全量', '条目数回到筛选前', `${ttCountBefore} → ${ttCountAfter}`,
+        ttCountAfter === ttCountBefore);
+
+  // 课程管理页的课表视图切换
+  await page.click('#nav-course');
+  await waitFor(async () => (await page.locator('#adminCourseBox tr').count()) >= 2);
+  await page.click('#adminCourseModeBtn');
+  await waitFor(async () => (await page.locator('#adminCourseWeekGrid .tt-grid').count()) > 0);
+  check(O, '课程管理可切换为周课表视图', '7 列且列表隐藏',
+        `${await page.locator('#adminCourseWeekGrid .tt-day').count()} 列`,
+        await page.locator('#adminCourseWeekGrid .tt-day').count() === 7
+        && !(await page.isVisible('#adminCourseBox')));
+
+  const courseCard = page.locator('#adminCourseWeekGrid .tt-item').first();
+  check(O, '周课表中的课程卡片可点击（进入编辑）', '带 clickable 样式',
+        await courseCard.getAttribute('class'), /clickable/.test(await courseCard.getAttribute('class')));
+  await courseCard.click();
+  await sleep(700);
+  const formTitle = await page.textContent('#courseFormTitle');
+  check(O, '点课表卡片进入课程编辑表单', '表单标题变为「编辑课程」', formTitle, formTitle.includes('编辑课程'));
+
+  await page.click('#adminCourseModeBtn');
+  await sleep(400);
+  check(O, '可从周课表切回列表视图', '列表可见 + 按钮文案复原',
+        `${await page.isVisible('#adminCourseBox')} / ${await page.textContent('#adminCourseModeBtn')}`,
+        await page.isVisible('#adminCourseBox')
+        && (await page.textContent('#adminCourseModeBtn')).includes('周课表'));
+
+  // 场馆管理页的占用课表视图
+  await page.click('#nav-venueAdmin');
+  await waitFor(async () => (await page.locator('#venueAdminBox tr').count()) >= 2);
+  await page.click('#venueAdminModeBtn');
+  await waitFor(async () => (await page.locator('#venueAdminWeekGrid .tt-grid').count()) > 0);
+  check(O, '场馆管理可切换为占用课表视图', '7 列且列表隐藏',
+        `${await page.locator('#venueAdminWeekGrid .tt-day').count()} 列`,
+        await page.locator('#venueAdminWeekGrid .tt-day').count() === 7
+        && !(await page.isVisible('#venueAdminBox')));
+  await page.click('#venueAdminModeBtn');
+  await sleep(400);
+  check(O, '可从占用课表切回场馆列表', '列表重新可见',
+        await page.isVisible('#venueAdminBox') ? '可见' : '隐藏', await page.isVisible('#venueAdminBox'));
+
+  /* ---------- P 超级管理员 · 账号管理 ---------- */
+  const P = 'P 账号管理';
+  await relogin('idManager', 'manager');
+  await page.waitForSelector('#nav-venueAdmin', { timeout: 10000 });
+  const mgrNav = await page.textContent('#sidebar');
+  check(P, '店长导航中没有「账号管理」', '不可见',
+        mgrNav.includes('账号管理') ? '出现了' : '未出现', !mgrNav.includes('账号管理'));
+
+  await relogin('idSuper', 'superadmin');
+  await page.waitForSelector('#nav-accounts', { timeout: 10000 });
+  check(P, '超级管理员导航含「账号管理」', '可见', await page.isVisible('#nav-accounts') ? '可见' : '隐藏',
+        await page.isVisible('#nav-accounts'));
+
+  await page.click('#nav-accounts');
+  await waitFor(async () => (await page.locator('#accountBox tr').count()) >= 2);
+  const accRows = await page.locator('#accountBox tr').count();
+  check(P, '账号列表渲染（表头 + 每页 6 条）', '7 行', `${accRows} 行`, accRows === 7);
+
+  const accText = await page.textContent('#accountBox');
+  check(P, '账号表含角色与密码状态列', '有「超级管理员」且无明文密码列',
+        accText.replace(/\s+/g, ' ').slice(0, 40),
+        accText.includes('密码状态') || accText.includes('未重置过'));
+
+  const accPager = await page.textContent('#accountBox');
+  check(P, '账号列表分页', '含"共 N 条"',
+        (accPager.match(/共 \d+ 个/) || ['（无）'])[0], /共 \d+ 个/.test(accPager));
+
+  // 重置密码：确认后显示新密码
+  await page.locator('#accountBox button:has-text("重置密码")').first().click();
+  await sleep(900);
+  const resetMsg = await page.textContent('#accountMsg');
+  check(P, '点「重置密码」返回新密码', '提示含 123456', resetMsg.replace(/\s+/g, ' ').slice(0, 46),
+        resetMsg.includes('123456'));
+
+  // 搜索
+  await page.fill('#accountSearch', 'superadmin');
+  await sleep(600);
+  const searched = await page.textContent('#accountBox');
+  check(P, '按用户名搜索账号', '结果只剩 superadmin', searched.replace(/\s+/g, ' ').slice(0, 40),
+        searched.includes('superadmin') && !searched.includes('member1'));
 
   /* ---------- F 运行时健康 ---------- */
   const F = 'F 运行时健康';

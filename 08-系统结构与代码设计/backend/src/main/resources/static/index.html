@@ -92,8 +92,8 @@
   .content{flex:1;min-width:0;padding:16px;max-width:1120px}
 
   /* ---------- 登录页身份选择 ---------- */
-  .idpick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:10px 0 2px}
-  .idpick button{width:auto;margin:0;padding:12px 4px;background:#fff;border:2px solid var(--line);color:var(--text);font-size:12.5px;border-radius:10px;line-height:1.35}
+  .idpick{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:10px 0 2px}
+  .idpick button{width:auto;margin:0;padding:10px 2px;background:#fff;border:2px solid var(--line);color:var(--text);font-size:11.5px;border-radius:10px;line-height:1.3}
   .idpick button .big{display:block;font-size:20px;margin-bottom:4px}
   .idpick button.sel{border-color:var(--primary);background:var(--chip);color:var(--primary);font-weight:700}
   .login-step{font-size:12px;color:var(--muted);margin-top:14px}
@@ -120,6 +120,37 @@
   .venue-card{border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px;cursor:pointer}
   .venue-card:hover{border-color:var(--primary)}
   .venue-card.active{border-color:var(--primary);background:var(--chip)}
+
+  /* ---------- 周课表（课表式管理：课程表 / 场馆占用表） ---------- */
+  .tt-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+  .tt-bar .tt-week{font-size:13px;font-weight:700;color:var(--primary);min-width:168px}
+  .tt-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;align-items:start}
+  .tt-day{border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fbfcfe}
+  .tt-day.today{border-color:var(--primary);box-shadow:inset 0 0 0 2px #e3ecfb}
+  .tt-head{background:var(--chip);color:var(--primary);font-size:12px;font-weight:700;
+    padding:6px 8px;display:flex;justify-content:space-between;gap:4px}
+  .tt-day.today .tt-head{background:var(--primary);color:#fff}
+  .tt-head .d{font-weight:400;opacity:.8}
+  .tt-body{padding:6px;display:flex;flex-direction:column;gap:6px;min-height:56px}
+  .tt-item{border-left:3px solid var(--primary);background:#fff;border-radius:6px;
+    padding:5px 7px;font-size:11.5px;line-height:1.45;box-shadow:0 1px 2px rgba(31,42,55,.06)}
+  .tt-item.tt-mine{border-left-color:var(--ok);background:#f2fbf7}
+  .tt-item.tt-venue{border-left-color:var(--warn);background:#fffaf3}
+  .tt-item.clickable{cursor:pointer}
+  .tt-item.clickable:hover{box-shadow:0 3px 10px rgba(47,85,151,.18)}
+  .tt-item .tt-time{font-family:Consolas,monospace;color:var(--primary);font-weight:700}
+  .tt-item .tt-title{font-weight:700;margin-top:1px;word-break:break-all}
+  .tt-item .tt-sub{color:var(--muted);word-break:break-all}
+  .tt-item .tt-meta{margin-top:3px;color:var(--muted);display:flex;justify-content:space-between;gap:4px}
+  .tt-item .tt-badge{background:var(--chip);color:var(--primary);border-radius:999px;
+    padding:0 6px;white-space:nowrap;font-size:10.5px}
+  .tt-item.tt-mine .tt-badge{background:#e6f6ee;color:var(--ok)}
+  .tt-item.tt-venue .tt-badge{background:#fdf1e3;color:var(--warn)}
+  .tt-empty{color:#c3cbd8;font-size:11px;text-align:center;padding:8px 0}
+  .tt-legend{display:flex;gap:14px;font-size:11.5px;color:var(--muted);margin:6px 0 10px;flex-wrap:wrap}
+  .tt-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:middle}
+  .tt-loading{color:var(--muted);font-size:12px;padding:10px 0}
+  @media (max-width:960px){ .tt-grid{grid-template-columns:repeat(2,minmax(0,1fr))} }
 </style>
 </head>
 <body>
@@ -139,6 +170,7 @@
         <button id="idManager" onclick="pickIdentity('MANAGER')"><span class="big">&#127978;</span>店长</button>
         <button id="idAdmin" onclick="pickIdentity('ADMIN')"><span class="big">&#9881;</span>管理员</button>
         <button id="idCoach" onclick="pickIdentity('COACH')"><span class="big">&#127947;</span>教练</button>
+        <button id="idSuper" onclick="pickIdentity('SUPER')"><span class="big">&#128737;</span>超级管理员</button>
       </div>
       <div class="login-step" id="idHint">当前身份：会员（进入会员端）</div>
 
@@ -172,6 +204,8 @@
         <tr><td>member2</td><td>会员 · 李四（会籍过期）</td><td><button onclick="fillLogin('member2')">填充</button></td></tr>
         <tr><td>manager</td><td>店长 · 门店后台</td><td><button onclick="fillLogin('manager')">填充</button></td></tr>
         <tr><td>admin</td><td>管理员 · 门店后台（可重置数据）</td><td><button onclick="fillLogin('admin')">填充</button></td></tr>
+        <tr><td>superadmin</td><td>超级管理员 · 可查全部账号并重置密码</td><td><button onclick="fillLogin('superadmin')">填充</button></td></tr>
+        <tr><td>coach1</td><td>教练 · 教练端（coach2 / coach3 同理）</td><td><button onclick="fillLogin('coach1')">填充</button></td></tr>
       </table>
     </div>
     <div class="login-foot">健身房会员运营与课程服务业务<br>登录即代表同意按角色使用系统功能</div>
@@ -353,13 +387,27 @@
           </div>
         </div>
 
-        <h2 style="margin-top:20px">课程列表</h2>
+        <h2 style="margin-top:20px">课程列表 / 周课表</h2>
         <div class="searchbar">
+          <button class="btn ghost" id="adminCourseModeBtn" onclick="toggleAdminCourseMode()">切换到周课表</button>
           <input id="adminCourseSearch" placeholder="搜索课程名称 / 编号 / 教练 / 状态" oninput="renderAdminCourses()">
           <button class="btn ghost" id="adminCourseClear" onclick="clearSearch('adminCourseSearch', renderAdminCourses)">清空</button>
           <button class="btn ghost" onclick="loadAdminCourses()">刷新列表</button>
         </div>
         <div id="adminCourseBox" class="m">未加载</div>
+
+        <!-- 课表式管理：一周 7 天 × 每个时段一张卡，点卡片直接进入编辑 -->
+        <div id="adminCourseWeekBox" class="hidden">
+          <div class="tt-bar">
+            <button class="btn ghost" onclick="ttShiftAnchor('course',-7,loadAdminCourseWeek)">上一周</button>
+            <button class="btn ghost" onclick="ttResetAnchor('course',loadAdminCourseWeek)">本周</button>
+            <button class="btn ghost" onclick="ttShiftAnchor('course',7,loadAdminCourseWeek)">下一周</button>
+            <span class="tt-week" id="adminCourseWeekLabel">—</span>
+            <button class="btn ghost" onclick="loadAdminCourseWeek()">刷新</button>
+          </div>
+          <div class="m" id="adminCourseWeekInfo"></div>
+          <div id="adminCourseWeekGrid" class="tt-loading">加载中…</div>
+        </div>
       </section>
 
       <!-- ---------- 门店后台：系统管理 ---------- -->
@@ -372,7 +420,28 @@
         </div>
       </section>
 
+      <!-- ---------- 门店后台：账号管理（仅超级管理员） ---------- -->
+      <section id="viewAccounts" class="panel hidden">
+        <h2>账号管理（超级管理员）</h2>
+        <div class="card" style="background:#fffaf3;border-color:#f2ddc0">
+          <div class="t">关于「查看密码」</div>
+          <div class="m">密码以 BCrypt 哈希存储，<b>单向不可逆</b>，系统<b>不提供</b>查看明文密码的接口
+            ——这不是功能缺失，而是安全底线：一旦密码可明文导出，等价于一处泄露即全站失守。<br>
+            需要掌握某个账号的登录凭据时，请点「重置密码」：重置为默认密码 <b>123456</b> 后，
+            新密码会当场显示出来。演示内置账号初始密码同为 123456。</div>
+        </div>
+        <div class="searchbar">
+          <input id="accountSearch" placeholder="搜索用户名 / 姓名 / 角色" oninput="renderAccounts()">
+          <button class="btn ghost" onclick="clearSearch('accountSearch', renderAccounts)">清空</button>
+          <button class="btn ghost" onclick="loadAccounts()">刷新</button>
+          <span class="chip" id="accountCount">0</span>
+        </div>
+        <div id="accountMsg" class="m"></div>
+        <div id="accountBox" class="m">未加载</div>
+      </section>
+
       <!-- ---------- 会员端：场地预约 ---------- -->
+
       <section id="viewVenues" class="panel hidden">
         <h2>场地预约</h2>
         <div class="m">4 个私有场馆 + 1 个公共区域。私有场馆仅对有效会籍开放，单次最长 4 小时，同一场地时段不可重叠。</div>
@@ -422,6 +491,40 @@
           <button class="btn" onclick="loadCoachRosterTable()">查看名单</button>
         </div>
         <div id="coachRosterBox" class="m">未加载</div>
+      </section>
+
+      <!-- ---------- 周课表（全角色；看到什么由服务端按角色决定） ---------- -->
+      <section id="viewTimetable" class="panel hidden">
+        <h2>周课表</h2>
+        <div class="m" id="ttOwner">加载中…</div>
+
+        <div class="tt-bar">
+          <button class="btn ghost" onclick="ttShiftAnchor('page',-7,loadTimetable)">上一周</button>
+          <button class="btn ghost" onclick="ttResetAnchor('page',loadTimetable)">本周</button>
+          <button class="btn ghost" onclick="ttShiftAnchor('page',7,loadTimetable)">下一周</button>
+          <span class="tt-week" id="ttWeekLabel">—</span>
+          <button class="btn" onclick="loadTimetable()">刷新</button>
+        </div>
+
+        <div class="tt-bar" id="ttFilters" style="display:none">
+          <select id="ttMemberFilter" onchange="loadTimetable()"><option value="">全部会员</option></select>
+          <select id="ttCoachFilter" onchange="loadTimetable()"><option value="">全部教练</option></select>
+          <select id="ttVenueFilter" onchange="loadTimetable()"><option value="">全部场馆</option></select>
+          <button class="btn ghost" onclick="ttClearFilter()">清空筛选</button>
+        </div>
+
+        <div class="tt-legend">
+          <span><i style="background:#2f5597"></i>课程</span>
+          <span><i style="background:#1e8e5a"></i>与我相关</span>
+          <span><i style="background:#c9761a"></i>场地占用</span>
+        </div>
+        <div class="m" id="ttNote"></div>
+
+        <h2 style="margin-top:16px">课程课表<span class="chip" id="ttCourseCount">0</span></h2>
+        <div id="ttCourseBox" class="tt-loading">加载中…</div>
+
+        <h2 style="margin-top:20px">场地占用课表<span class="chip" id="ttVenueCount">0</span></h2>
+        <div id="ttVenueBox" class="tt-loading">加载中…</div>
       </section>
 
       <!-- ---------- 门店后台：教练管理 ---------- -->
@@ -474,13 +577,28 @@
             <button class="btn ghost" id="venueCancelBtn" onclick="closeVenueForm()" style="display:none">取消编辑</button>
           </div>
         </div>
-        <h2 style="margin-top:20px">场馆列表</h2>
+        <h2 style="margin-top:20px">场馆列表 / 占用课表</h2>
         <div class="searchbar">
+          <button class="btn ghost" id="venueAdminModeBtn" onclick="toggleVenueAdminMode()">切换到占用课表</button>
           <input id="venueAdminSearch" placeholder="搜索场馆名称 / 编号 / 位置" oninput="renderVenueAdmin()">
           <button class="btn ghost" id="venueAdminClear" onclick="clearSearch('venueAdminSearch', renderVenueAdmin)">清空</button>
           <button class="btn ghost" onclick="loadVenueAdmin()">刷新</button>
         </div>
         <div id="venueAdminBox" class="m">未加载</div>
+
+        <!-- 课表式管理：一周 7 天的场馆占用情况 -->
+        <div id="venueAdminWeekBox" class="hidden">
+          <div class="tt-bar">
+            <button class="btn ghost" onclick="ttShiftAnchor('venue',-7,loadVenueAdminWeek)">上一周</button>
+            <button class="btn ghost" onclick="ttResetAnchor('venue',loadVenueAdminWeek)">本周</button>
+            <button class="btn ghost" onclick="ttShiftAnchor('venue',7,loadVenueAdminWeek)">下一周</button>
+            <span class="tt-week" id="venueAdminWeekLabel">—</span>
+            <select id="venueAdminWeekFilter" onchange="loadVenueAdminWeek()"><option value="">全部场馆</option></select>
+            <button class="btn ghost" onclick="loadVenueAdminWeek()">刷新</button>
+          </div>
+          <div class="m" id="venueAdminWeekInfo"></div>
+          <div id="venueAdminWeekGrid" class="tt-loading">加载中…</div>
+        </div>
       </section>
 
       <!-- ---------- 门店后台：场地预约管理 ---------- -->
@@ -679,11 +797,11 @@ async function enterApp() {
 
 /* ================= 左侧导航（每个板块一个独立页面） ================= */
 const ALL_VIEWS = ['viewMember','viewMemberCourses','viewMemberBookings',
-                   'viewVenues','viewMyVenueBookings',
+                   'viewVenues','viewMyVenueBookings','viewTimetable',
                    'viewCoachCourses','viewCoachRoster',
                    'viewBooking','viewPay','viewRisk','viewPerf','viewReport',
                    'viewCourse','viewCoachAdmin','viewVenueAdmin','viewVenueBookingAdmin',
-                   'viewSystem','viewLog'];
+                   'viewAccounts','viewSystem','viewLog'];
 
 /** 当前登录者可见的导航项 */
 function navItems() {
@@ -694,6 +812,7 @@ function navItems() {
   const admin = staff && !!u.admin;
   const items = [
     /* ---- 会员端 ---- */
+    { key:'timetable',      view:'viewTimetable',      label:'我的课表',   icon:'&#128197;', show:member, enter: loadTimetable },
     { key:'memberInfo',     view:'viewMember',         label:'我的信息',   icon:'&#128100;', show:member, enter: loadMyInfo },
     { key:'memberCourses',  view:'viewMemberCourses',  label:'课程与余位', icon:'&#128218;', show:member, enter: loadMemberCourses },
     { key:'memberBookings', view:'viewMemberBookings', label:'我的预约',   icon:'&#128197;', show:member, enter: loadMyBookings },
@@ -701,11 +820,13 @@ function navItems() {
     { key:'myVenueBookings',view:'viewMyVenueBookings',label:'我的场地预约',icon:'&#128198;', show:member, enter: loadMyVenueBookings },
 
     /* ---- 教练端 ---- */
-    { key:'coachCourses', view:'viewCoachCourses', label:'我的课表',   icon:'&#128203;', show:coach,
+    { key:'timetableCourse',view:'viewTimetable',      label:'我的课表',   icon:'&#128197;', show:coach, enter: loadTimetable },
+    { key:'coachCourses', view:'viewCoachCourses', label:'授课课程',   icon:'&#128203;', show:coach,
       enter: async () => { await loadCoachProfile(); await loadCoachCourses(); } },
     { key:'coachRoster',  view:'viewCoachRoster',  label:'学员名单',   icon:'&#128101;', show:coach, enter: loadCoachRoster },
 
     /* ---- 门店后台 ---- */
+    { key:'timetableStaff', view:'viewTimetable', label:'周课表',   icon:'&#128197;', show:staff, enter: loadTimetable },
     { key:'booking', view:'viewBooking', label:'约课管理',   icon:'&#128203;', show:staff,
       enter: async () => { await loadMembers(); await loadCourses(); await loadBookings(); } },
     { key:'pay',    view:'viewPay',    label:'收费与对账', icon:'&#128176;', show:staff,
@@ -720,6 +841,7 @@ function navItems() {
   if (staff) items.push({ key:'coachAdmin', view:'viewCoachAdmin', label:'教练管理', icon:'&#127947;', show:true, enter: loadCoachAdmin });
   if (staff) items.push({ key:'venueAdmin', view:'viewVenueAdmin', label:'场馆管理', icon:'&#127967;', show:true, enter: loadVenueAdmin });
   if (staff) items.push({ key:'venueBookingAdmin', view:'viewVenueBookingAdmin', label:'场地预约管理', icon:'&#128198;', show:true, enter: loadVenueBookingAdmin });
+  if (staff && u.superAdmin) items.push({ key:'accounts', view:'viewAccounts', label:'账号管理', icon:'&#128273;', show:true, enter: loadAccounts });
   if (admin) items.push({ key:'system', view:'viewSystem', label:'系统管理', icon:'&#9881;',   show:true, enter: async () => {} });
   if (staff) items.push({ key:'log',    view:'viewLog',    label:'接口日志', icon:'&#128220;', show:true, enter: async () => {} });
   return items;
@@ -754,16 +876,16 @@ function closeModal() { $('modalMask').classList.add('hidden'); $('modalBox').in
 
 /* ================= 登录身份选择 ================= */
 let loginIdentity = 'MEMBER';
-const IDENTITY_CN = { MEMBER: '会员', MANAGER: '店长', ADMIN: '管理员', COACH: '教练' };
+const IDENTITY_CN = { MEMBER: '会员', MANAGER: '店长', ADMIN: '管理员', COACH: '教练', SUPER: '超级管理员' };
 
 function pickIdentity(id) {
   loginIdentity = id;
-  $('idMember').classList.toggle('sel', id === 'MEMBER');
-  $('idManager').classList.toggle('sel', id === 'MANAGER');
-  $('idAdmin').classList.toggle('sel', id === 'ADMIN');
-  $('idCoach').classList.toggle('sel', id === 'COACH');
+  ['idMember', 'idManager', 'idAdmin', 'idCoach', 'idSuper']
+    .forEach(e => $(e).classList.toggle('sel', 'id' + id.charAt(0) + id.slice(1).toLowerCase() === e));
   $('idHint').textContent = '当前身份：' + IDENTITY_CN[id]
-      + (id === 'MEMBER' ? '（进入会员端）' : id === 'COACH' ? '（进入教练端）' : '（进入门店后台）');
+      + (id === 'MEMBER' ? '（进入会员端）'
+        : id === 'COACH' ? '（进入教练端）'
+        : id === 'SUPER' ? '（进入门店后台，可管理全部账号）' : '（进入门店后台）');
   $('loginMsg').textContent = '';
 }
 
@@ -773,7 +895,8 @@ function identityMatches(user, identity) {
   if (identity === 'MEMBER') return role === 'MEMBER';
   if (identity === 'COACH') return role === 'COACH';
   if (identity === 'MANAGER') return role === 'STAFF';   // 管理员也是门店后台
-  return role === 'STAFF' && !!user.admin;
+  if (identity === 'SUPER') return role === 'STAFF' && !!user.superAdmin;
+  return role === 'STAFF' && !!user.admin;               // ADMIN
 }
 
 /* ================= 会员端 ================= */
@@ -1367,7 +1490,8 @@ async function resetDemoData() {
 
 /* ================= 分页（课程与场馆列表共用） ================= */
 const PAGE_SIZE = 6;
-const pgState = { memberCourses: 1, staffCourses: 1, adminCourses: 1, venues: 1, venueAdmin: 1, coachCourses: 1, coachAdmin: 1 };
+const pgState = { memberCourses: 1, staffCourses: 1, adminCourses: 1, venues: 1, venueAdmin: 1,
+                  coachCourses: 1, coachAdmin: 1, accounts: 1 };
 const PG_RENDER = {};
 
 function gotoPage(key, n) {
@@ -1393,6 +1517,292 @@ function pageOf(list, key) {
       <button class="pg" ${page >= total ? 'disabled' : ''} onclick="gotoPage('${key}','${page + 1}')">下一页</button>
     </div>`;
   return { slice, bar, page, total, all: list.length };
+}
+
+/* ================= 账号管理（超级管理员） ================= */
+let accountAll = [];
+
+async function loadAccounts() {
+  const r = await api('GET', '/api/admin/accounts');
+  const box = $('accountBox');
+  if (r.status !== 200) {
+    box.innerHTML = '<span class="chip err">加载失败</span> '
+      + ((r.data && (r.data.reason || r.data.message)) || ('HTTP ' + r.status));
+    return;
+  }
+  accountAll = Array.isArray(r.data) ? r.data : [];
+  renderAccounts();
+}
+
+function renderAccounts() {
+  const kw = norm(($('accountSearch').value || '').trim());
+  const shown = accountAll.filter(a => !kw
+    || norm(a.username).includes(kw)
+    || norm(a.displayName).includes(kw)
+    || norm(a.roleCn).includes(kw)
+    || norm(a.memberName).includes(kw)
+    || norm(a.coachName).includes(kw));
+  $('accountCount').textContent = '共 ' + accountAll.length + ' 个账号';
+  if (shown.length === 0) { $('accountBox').innerHTML = '没有匹配的账号'; return; }
+  const pg = pageOf(shown, 'accounts');
+  PG_RENDER.accounts = renderAccounts;
+  $('accountBox').innerHTML =
+    `<div class="m">共 ${shown.length} 个${kw ? '（全部 ' + accountAll.length + ' 个）' : ''}</div>`
+    + `<table>
+    <tr><th>ID</th><th>用户名</th><th>姓名</th><th>角色</th><th>数据归属</th>
+        <th>状态</th><th>密码状态</th><th>操作</th></tr>
+    ${pg.slice.map(a => {
+      const off = a.status !== 'active';
+      const owner = a.memberName ? ('会员 · ' + a.memberName)
+                  : a.coachName  ? ('教练 · ' + a.coachName)
+                  : '—';
+      return `<tr>
+        <td>${a.id}</td>
+        <td>${safe(a.username)}</td>
+        <td>${safe(a.displayName)}</td>
+        <td><span class="chip ${a.superAdmin ? 'warn' : ''}">${safe(a.roleCn)}</span></td>
+        <td>${safe(owner)}</td>
+        <td><span class="chip ${off ? 'err' : 'ok'}">${safe(a.statusCn)}</span></td>
+        <td class="m">${safe(a.passwordHint)}</td>
+        <td>
+          <button class="btn warn" onclick="resetAccountPassword('${a.id}')">重置密码</button>
+          <button class="btn ${off ? '' : 'danger'}" onclick="toggleAccountStatus('${a.id}')">${off ? '启用' : '停用'}</button>
+        </td></tr>`;
+    }).join('')}
+  </table>` + pg.bar;
+}
+
+/** 重置密码：重置为默认密码，新密码随响应返回（不显示任何历史密码） */
+async function resetAccountPassword(id) {
+  const a = accountAll.find(x => String(x.id) === String(id));
+  if (!confirm('确认将「' + (a ? a.username : id) + '」的密码重置为 123456？\n原密码将立即失效。')) return;
+  const r = await api('POST', `/api/admin/accounts/${id}/reset-password`, {});
+  const box = $('accountMsg');
+  if (r.status !== 200) {
+    box.innerHTML = '<span class="chip err">重置失败</span> ' + ((r.data && (r.data.reason || r.data.message)) || '');
+    return;
+  }
+  const pwd = (r.data && r.data.newPassword) || '123456';
+  box.innerHTML = '<span class="chip ok">已重置</span> 账号 <b>' + safe(r.data.username || (a ? a.username : ''))
+    + '</b> 的新密码：<b style="color:var(--err)">' + safe(pwd) + '</b>'
+    + '　— 请告知本人登录后尽快修改。';
+  await loadAccounts();
+}
+
+/** 启用 / 停用账号（不能停用自己，也不能停用超级管理员） */
+async function toggleAccountStatus(id) {
+  const r = await api('POST', `/api/admin/accounts/${id}/toggle-status`, {});
+  const box = $('accountMsg');
+  if (r.status !== 200) {
+    box.innerHTML = '<span class="chip err">操作失败</span> ' + ((r.data && (r.data.reason || r.data.message)) || '');
+    return;
+  }
+  box.innerHTML = '<span class="chip ok">已' + (r.data.status === 'active' ? '启用' : '停用')
+    + '</span> ' + safe(r.data.username);
+  await loadAccounts();
+}
+
+/* ================= 周课表（课程表 / 场馆占用表） ================= */
+
+// 三个课表视图各自记住"当前周"（存该周内任意一天，服务端负责归一到周一）
+const TT_ANCHOR = { page: null, course: null, venue: null };
+let ttOverview = null;              // 最近一次 /api/timetable/overview 的结果
+let courseViewMode = 'list';        // 课程管理：list | week
+let venueViewMode = 'list';         // 场馆管理：list | week
+
+/** HTML 转义：课表条目里包含用户输入的场馆名 / 会员姓名，必须转义后再拼字符串 */
+const safe = v => String(v === null || v === undefined ? '' : v)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+const pad2 = n => String(n).padStart(2, '0');
+function isoDay(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+function todayIso() { return isoDay(new Date()); }
+/** 以"周"为单位平移日期；用 / 分隔解析，避免被当成 UTC 时间 */
+function shiftIso(iso, days) {
+  const d = new Date(String(iso || todayIso()).replace(/-/g, '/'));
+  d.setDate(d.getDate() + days);
+  return isoDay(d);
+}
+function ttShiftAnchor(key, days, loader) {
+  TT_ANCHOR[key] = shiftIso(TT_ANCHOR[key] || todayIso(), days);
+  return loader();
+}
+function ttResetAnchor(key, loader) { TT_ANCHOR[key] = todayIso(); return loader(); }
+
+/** 本周共有多少个时段 */
+function ttCount(tt) {
+  return tt && tt.days ? tt.days.reduce((n, d) => n + (d.items ? d.items.length : 0), 0) : 0;
+}
+
+/** 单个课表条目卡片；act 为静态动作名（roster / edit），由事件委托统一处理 */
+function ttItemHtml(it, act) {
+  const cls = 'tt-item' + (it.kind === 'venue' ? ' tt-venue' : (it.mine ? ' tt-mine' : ''))
+            + (act ? ' clickable' : '');
+  const badge = it.kind === 'venue' ? '场地' : (it.remaining > 0 ? '余 ' + it.remaining : '已满');
+  return `<div class="${cls}" data-act="${act || ''}" data-id="${it.id}" title="${safe(it.subtitle)}">`
+    + `<div class="tt-time">${safe(it.start)}–${safe(it.end)}</div>`
+    + `<div class="tt-title">${safe(it.title)}</div>`
+    + `<div class="tt-sub">${safe(it.subtitle)}</div>`
+    + `<div class="tt-meta"><span>${safe(it.code)}</span><span class="tt-badge">${badge}</span></div>`
+    + '</div>';
+}
+
+/** 周七天网格；固定 7 列，无安排的日期也保留，便于一眼看出空档 */
+function ttGridHtml(tt, act) {
+  if (!tt || !tt.days) return '<div class="m">暂无数据</div>';
+  return '<div class="tt-grid">' + tt.days.map(d => {
+    const body = d.items && d.items.length
+      ? d.items.map(it => ttItemHtml(it, act)).join('')
+      : '<div class="tt-empty">无安排</div>';
+    return `<div class="tt-day${d.today ? ' today' : ''}">`
+      + `<div class="tt-head"><span>${safe(d.weekdayCn)}</span>`
+      + `<span class="d">${String(d.date).slice(5)}</span></div>`
+      + `<div class="tt-body">${body}</div></div>`;
+  }).join('') + '</div>';
+}
+
+/** 课表卡片点击：用事件委托，避免把函数调用拼进 HTML 属性里 */
+function ttBindClicks() {
+  document.addEventListener('click', e => {
+    const el = e.target.closest && e.target.closest('.tt-item[data-act]');
+    if (!el) return;
+    const act = el.getAttribute('data-act');
+    const id = Number(el.getAttribute('data-id'));
+    if (!act || !id) return;
+    if (act === 'roster') ttRoster(id);
+    else if (act === 'edit') startEdit(id);
+  });
+}
+
+/** 门店后台点课程卡片 → 直接看该课报名名单（复用已有的名单弹窗） */
+function ttRoster(courseId) {
+  const pool = [].concat(state.adminCourses || [], state.courses || []);
+  const hit = pool.find(c => String(c.id) === String(courseId));
+  return showCourseRoster(courseId, hit ? hit.name : '');
+}
+
+/* ---- 主页面：按角色渲染自己的课表 ---- */
+async function loadTimetable() {
+  if (!TT_ANCHOR.page) TT_ANCHOR.page = todayIso();
+  await ttFillFilters();
+  const q = new URLSearchParams({ week: TT_ANCHOR.page });
+  const mf = $('ttMemberFilter'), cf = $('ttCoachFilter'), vf = $('ttVenueFilter');
+  if (mf && mf.value) q.set('memberId', mf.value);
+  if (cf && cf.value) q.set('coachId', cf.value);
+  if (vf && vf.value) q.set('venueId', vf.value);
+
+  const r = await api('GET', '/api/timetable/overview?' + q.toString());
+  if (r.status !== 200) {
+    const msg = '加载失败：' + ((r.data && (r.data.reason || r.data.message)) || ('HTTP ' + r.status));
+    $('ttCourseBox').innerHTML = msg;
+    $('ttVenueBox').innerHTML = '';
+    return;
+  }
+  ttOverview = r.data;
+  renderTimetable();
+}
+
+function renderTimetable() {
+  const d = ttOverview;
+  if (!d || !d.courses || !d.venues) return;
+  const staff = state.user && state.user.role === 'STAFF';
+  $('ttFilters').style.display = staff ? 'flex' : 'none';
+  $('ttOwner').textContent = d.courses.owner + '　|　' + d.venues.owner;
+  $('ttNote').textContent = d.note || '';
+  $('ttWeekLabel').textContent = d.courses.weekStart + ' ~ ' + d.courses.weekEnd;
+  $('ttCourseCount').textContent = ttCount(d.courses) + ' 个时段';
+  $('ttVenueCount').textContent = ttCount(d.venues) + ' 个时段';
+  $('ttCourseBox').innerHTML = ttGridHtml(d.courses, staff ? 'roster' : null);
+  $('ttVenueBox').innerHTML = ttGridHtml(d.venues, null);
+}
+
+/** 门店后台的筛选下拉：会员 / 教练 / 场馆 */
+async function ttFillFilters() {
+  if (!state.user || state.user.role !== 'STAFF') return;
+  if (!state.members || state.members.length === 0) await loadMembers();
+  if (!state.coaches || state.coaches.length === 0) {
+    const r = await api('GET', '/api/coaches');
+    state.coaches = Array.isArray(r.data) ? r.data : [];
+  }
+  if (!state.venues || state.venues.length === 0) {
+    const r = await api('GET', '/api/venues');
+    state.venues = Array.isArray(r.data) ? r.data : [];
+  }
+  const mf = $('ttMemberFilter'), cf = $('ttCoachFilter'), vf = $('ttVenueFilter');
+  if (mf && mf.options.length <= 1) {
+    mf.innerHTML = '<option value="">全部会员</option>'
+      + (state.members || []).map(m => `<option value="${m.id}">${safe(m.name)}（${safe(m.memberNo)}）</option>`).join('');
+  }
+  if (cf && cf.options.length <= 1) {
+    cf.innerHTML = '<option value="">全部教练</option>'
+      + (state.coaches || []).map(c => `<option value="${c.id}">${safe(c.name)}</option>`).join('');
+  }
+  if (vf && vf.options.length <= 1) {
+    vf.innerHTML = '<option value="">全部场馆</option>'
+      + (state.venues || []).map(v => `<option value="${v.id}">${safe(v.name)}</option>`).join('');
+  }
+}
+
+function ttClearFilter() {
+  ['ttMemberFilter', 'ttCoachFilter', 'ttVenueFilter'].forEach(id => { const e = $(id); if (e) e.value = ''; });
+  return loadTimetable();
+}
+
+/* ---- 课程管理：列表视图 ⇄ 周课表视图 ---- */
+function toggleAdminCourseMode() {
+  courseViewMode = courseViewMode === 'week' ? 'list' : 'week';
+  const week = courseViewMode === 'week';
+  $('adminCourseBox').classList.toggle('hidden', week);
+  $('adminCourseWeekBox').classList.toggle('hidden', !week);
+  $('adminCourseModeBtn').textContent = week ? '切换到列表' : '切换到周课表';
+  if (week) return loadAdminCourseWeek();
+  return renderAdminCourses();
+}
+
+async function loadAdminCourseWeek() {
+  if (!TT_ANCHOR.course) TT_ANCHOR.course = todayIso();
+  const r = await api('GET', '/api/timetable/courses?week=' + TT_ANCHOR.course + '&scope=all');
+  const grid = $('adminCourseWeekGrid');
+  if (r.status !== 200) { grid.innerHTML = '加载失败'; return; }
+  const tt = r.data;
+  $('adminCourseWeekLabel').textContent = tt.weekStart + ' ~ ' + tt.weekEnd;
+  $('adminCourseWeekInfo').textContent =
+    tt.owner + ' · 共 ' + ttCount(tt) + ' 个排课时段（点击卡片可编辑或查看名单）';
+  grid.innerHTML = ttGridHtml(tt, 'edit');
+}
+
+/* ---- 场馆管理：列表视图 ⇄ 占用课表视图 ---- */
+function toggleVenueAdminMode() {
+  venueViewMode = venueViewMode === 'week' ? 'list' : 'week';
+  const week = venueViewMode === 'week';
+  $('venueAdminBox').classList.toggle('hidden', week);
+  $('venueAdminWeekBox').classList.toggle('hidden', !week);
+  $('venueAdminModeBtn').textContent = week ? '切换到列表' : '切换到占用课表';
+  if (week) return loadVenueAdminWeek();
+  return renderVenueAdmin();
+}
+
+async function loadVenueAdminWeek() {
+  if (!TT_ANCHOR.venue) TT_ANCHOR.venue = todayIso();
+  if (!venueAdminAll || venueAdminAll.length === 0) {
+    const rv = await api('GET', '/api/venues');
+    venueAdminAll = Array.isArray(rv.data) ? rv.data : [];
+  }
+  state.venues = venueAdminAll;
+  const sel = $('venueAdminWeekFilter');
+  if (venueAdminAll.length && sel.options.length <= 1) {
+    sel.innerHTML = '<option value="">全部场馆</option>'
+      + venueAdminAll.map(v => `<option value="${v.id}">${safe(v.name)}</option>`).join('');
+  }
+  const vid = sel && sel.value ? '&venueId=' + sel.value : '';
+  const r = await api('GET', '/api/timetable/venues?week=' + TT_ANCHOR.venue + '&scope=all' + vid);
+  const grid = $('venueAdminWeekGrid');
+  if (r.status !== 200) { grid.innerHTML = '加载失败'; return; }
+  const tt = r.data;
+  $('venueAdminWeekLabel').textContent = tt.weekStart + ' ~ ' + tt.weekEnd;
+  $('venueAdminWeekInfo').textContent = tt.owner + ' · 共 ' + ttCount(tt) + ' 段占用（仅显示占用中的时段）';
+  grid.innerHTML = ttGridHtml(tt, null);
 }
 
 /* ================= 课程报名名单（门店 / 教练可查） ================= */
@@ -1800,6 +2210,9 @@ async function staffCancelVenueBooking(id) {
 document.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !$('loginView').classList.contains('hidden')) doLogin();
 });
+
+// 课表卡片点击（事件委托，只绑定一次）
+ttBindClicks();
 
 /* ================= 二维码生成（纯 JS，无需任何外部库） =================
  * 实现范围：Byte 模式、纠错级别 M、版本 1–10（容量约 213 字节）。

@@ -38,23 +38,18 @@ def p12(prs):
 def p13(prs):
     """一个入口，三种角色"""
     sl = blank(prs, C['white'])
-    header(sl, '一个入口，三种角色')
-    text(sl, 40, 108, 740, 32, '登录后按角色进入对应界面', size=24, bold=True,
-         color=C['deep'], valign='middle')
-    roles = [
-        ('member1 / member2', '会员端', '我的会籍 · 约课 · 扫码签到 · 取消预约', C['light']),
-        ('manager', '门店后台', '约课管理 · 收费对账 · 风险预测 · 业绩提成 · 摘要审计', C['bg']),
-        ('admin', '门店后台 + 系统管理', '在店长权限之上，可重置演示数据', C['bg']),
+    header(sl, '一个入口，五种角色')
+    text(sl, 40, 106, 740, 32, '登录后按角色进入对应界面（密码统一 123456）', size=23,
+         bold=True, color=C['deep'], valign='middle')
+    rows = [
+        ('账号', '角色', '可见范围'),
+        ('member1 / member2', '会员端', '我的会籍 · 约课 · 扫码签到 · 场地预约 · 我的课表'),
+        ('coach1 / coach2 / coach3', '教练端', '我的授课课表 · 学员名单 · 核销本人课程签到'),
+        ('manager', '门店后台', '约课管理 · 收费对账 · 风险预测 · 业绩提成 · 场馆与课程课表'),
+        ('admin', '门店后台 + 系统管理', '在店长权限之上，可重置演示数据'),
+        ('superadmin', '超级管理员', '以上全部 + 账号管理（查看 / 重置密码 / 启停）'),
     ]
-    y = 152
-    for acct, role, scope, bg in roles:
-        rect(sl, 40, y, 740, 116, fill=bg, line=C['line'], radius=10)
-        text(sl, 62, y + 16, 300, 34, role, size=24, bold=True, color=C['deep'], valign='middle')
-        text(sl, 62, y + 58, 700, 44, scope, size=19, color=C['t2'], spacing=1.4)
-        rect(sl, 380, y + 16, 380, 32, fill='FFFFFF', line=C['line'], radius=16)
-        text(sl, 380, y + 16, 380, 32, '账号：' + acct + '　密码：123456', size=16,
-             color=C['primary'], align='center', valign='middle')
-        y += 128
+    table(sl, 40, 148, 740, 372, rows, col_w=[190, 170, 380], size=16, header_size=16)
     conclusion(sl, 40, 540, 740, '判断', '权限必须在服务端强制，前端隐藏按钮不算权限', h=74)
     card(sl, 812, 108, 428, 506, fill=C['light2'], line=None)
     text(sl, 834, 128, 384, 32, '服务端强制的三种结果', size=23, bold=True,
@@ -332,26 +327,26 @@ def p17(prs):
         rect(sl, x, 486, 108, 40, fill='FFFFFF', line=C['line'], radius=20)
         text(sl, x, 486, 108, 40, lb, size=19, color=C['t1'], align='center', valign='middle')
         x += 122
-    footer(sl, '健身房运营管理系统 · 课程答辩', 20)
+    footer(sl, '健身房运营管理系统 · 课程答辩', 24)
     return sl
 
 
 def p18(prs):
     """200 项六层检查"""
     sl = blank(prs, C['white'])
-    header(sl, '244 项检查，覆盖七个层次')
+    header(sl, '374 项检查，覆盖七个层次')
     rect(sl, 40, 108, 420, 452, fill=C['light'], line=None, radius=12)
-    text(sl, 60, 146, 380, 152, '244', size=116, bold=True, color=C['deep'],
+    text(sl, 60, 146, 380, 152, '374', size=116, bold=True, color=C['deep'],
          valign='middle', spacing=1.0)
     text(sl, 60, 306, 380, 40, '项自动化检查全部通过', size=22, color=C['t1'], valign='middle')
     text(sl, 60, 356, 380, 180,
          '从单元测试到真实浏览器点击、再到二维码反解，\n每一层都有可复现的执行命令与\n报告文件，答辩现场可逐条演示。',
          size=19, color=C['t2'], spacing=1.6)
     rows = [
-        ('Java 单元 · 架构守卫 · 行为驱动', '73'),
-        ('集成测试（登录 / 权限 / 全流程）', '69'),
-        ('前端静态检查（防按钮无响应）', '5'),
-        ('真实浏览器测试（含身份与二维码）', '56'),
+        ('Java 单元 · 架构守卫 · 行为驱动', '88'),
+        ('集成测试（登录/权限/账号/课表）', '130'),
+        ('前端静态检查（防按钮无响应）', '6'),
+        ('真实浏览器测试（含课表与账号管理）', '109'),
         ('二维码结构校验（反解还原）', '5'),
         ('参考实现 BDD + 接口冒烟（对照）', '18 ／ 18'),
     ]
@@ -364,15 +359,15 @@ def p18(prs):
         y += 76
     conclusion(sl, 40, 578, 1200, '判断',
                '测试要能挡住"点了没反应"这类问题，所以既做静态检查，也做真实浏览器点击', h=62)
-    footer(sl, '来源：五份测试报告文件（verify/ 与 app/ 目录）', 21)
+    footer(sl, '来源：五份测试报告文件（verify/ 与 app/ 目录）', 25)
     return sl
 
 
 def p19(prs):
     """15 个缺陷"""
     sl = blank(prs, C['white'])
-    header(sl, '15 个缺陷：把踩过的坑讲清楚')
-    levels = [('严重', '2', C['red']), ('中等', '9', C['primary']), ('轻微', '4', C['t2'])]
+    header(sl, '17 个缺陷：把踩过的坑讲清楚')
+    levels = [('严重', '2', C['red']), ('中等', '10', C['primary']), ('轻微', '5', C['t2'])]
     x = 40
     for name, cnt, col in levels:
         rect(sl, x, 108, 250, 116, fill=C['bg'], line=C['line'], radius=10)
@@ -400,7 +395,7 @@ def p19(prs):
         y += 118
     conclusion(sl, 40, 598, 1200, '判断',
                '能复现、能定位、能防回归，缺陷才是资产；只写"已修复"等于没讲', h=46)
-    footer(sl, '来源：系统测试文档 · 缺陷记录章节', 22)
+    footer(sl, '来源：系统测试文档 · 缺陷记录章节', 26)
     return sl
 
 
@@ -423,7 +418,7 @@ def p20(prs):
         rect(sl, x, 486, 108, 40, fill='FFFFFF', line=C['line'], radius=20)
         text(sl, x, 486, 108, 40, lb, size=19, color=C['t1'], align='center', valign='middle')
         x += 122
-    footer(sl, '健身房运营管理系统 · 课程答辩', 23)
+    footer(sl, '健身房运营管理系统 · 课程答辩', 27)
     return sl
 
 
@@ -460,7 +455,7 @@ def p21(prs):
          size=19, color=C['t1'], spacing=1.55)
     conclusion(sl, 40, 578, 1200, '下一步',
                '先补 S5 业务逻辑，再把会话改为 JWT，最后接入支付沙箱与 CI', h=62)
-    footer(sl, '来源：代码实现与测试报告 · 开放问题台账', 24)
+    footer(sl, '来源：代码实现与测试报告 · 开放问题台账', 28)
     return sl
 
 

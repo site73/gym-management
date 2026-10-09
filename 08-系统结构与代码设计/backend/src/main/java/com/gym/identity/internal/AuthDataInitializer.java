@@ -46,11 +46,13 @@ public class AuthDataInitializer implements CommandLineRunner {
         ensureRole("manager", "店长");
         ensureRole("admin", "系统管理员");
         ensureRole("coach", "教练");
+        ensureRole("super_admin", "超级管理员");
 
         Long member1 = ensureUser("member1", "张三（会员）", "member");
         Long member2 = ensureUser("member2", "李四（会员）", "member");
         ensureUser("manager", "门店店长", "manager");
         ensureUser("admin", "系统管理员", "admin");
+        ensureUser("superadmin", "超级管理员", "super_admin");
 
         // 教练账号（coach1/coach2/coach3 绑定 coach 档案 101/102/103）
         Long coach1 = ensureUser("coach1", "王教练", "coach");
@@ -97,6 +99,7 @@ public class AuthDataInitializer implements CommandLineRunner {
         return List.of("member1 / 123456（会员·张三）", "member2 / 123456（会员·李四·会籍过期）",
                 "manager / 123456（门店后台）", "admin / 123456（门店后台·管理员）",
                 "coach1 / 123456（教练·王教练）", "coach2 / 123456（教练·李教练）",
-                "coach3 / 123456（教练·赵教练）");
+                "coach3 / 123456（教练·赵教练）",
+                "superadmin / 123456（超级管理员·账号管理）");
     }
 }

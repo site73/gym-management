@@ -561,6 +561,159 @@ const login = async (u, p) => call('POST', '/api/auth/login', { username: u, pas
   r = await call('GET', '/api/courses/13/bookings', undefined, T_COACH3);
   check(M, '非本课教练不能查看名单', '403', `${r.status}`, r.status === 403);
 
+  /* ==================== N 超级管理员 · 账号管理 ==================== */
+  const N = 'N 账号管理（超级管理员）';
+  const sup = await login('superadmin', '123456');
+  check(N, '超级管理员登录成功', '200 + superAdmin=true',
+        `${sup.status} superAdmin=${sup.data && sup.data.user.superAdmin}`,
+        sup.status === 200 && sup.data.user.superAdmin === true);
+  const T_SUP = sup.data ? sup.data.token : null;
+
+  r = await call('GET', '/api/admin/accounts', undefined, T_SUP);
+  const accounts = Array.isArray(r.data) ? r.data : [];
+  check(N, '超级管理员可查看全部账号', '200 + ≥30 个账号', `${r.status} ${accounts.length} 个`,
+        r.status === 200 && accounts.length >= 30);
+
+  const a0 = accounts[0] || {};
+  check(N, '账号视图含角色中文与密码状态（不含明文密码）',
+        'roleCn / statusCn / passwordHint 均有值，且无 password 字段',
+        `${a0.roleCn} / ${a0.statusCn} / ${a0.passwordHint}`,
+        !!a0.roleCn && !!a0.statusCn && !!a0.passwordHint && a0.password === undefined);
+
+  check(N, '账号列表不含明文密码字段', '任一账号都不出现 password',
+        Object.keys(a0).filter(k => /pass/i.test(k)).join(',') || '无',
+        accounts.every(a => !Object.keys(a).some(k => /pass(word)?$/i.test(k) && typeof a[k] === 'string')));
+
+  r = await call('GET', '/api/admin/accounts', undefined, T_ADM);
+  check(N, '普通管理员不能查看账号', '403', `${r.status}`, r.status === 403);
+  r = await call('GET', '/api/admin/accounts', undefined, T_MGR);
+  check(N, '店长不能查看账号', '403', `${r.status}`, r.status === 403);
+  r = await call('GET', '/api/admin/accounts', undefined, T_M1);
+  check(N, '会员不能查看账号', '403', `${r.status}`, r.status === 403);
+  r = await call('GET', '/api/admin/accounts');
+  check(N, '未登录不能查看账号', '401', `${r.status}`, r.status === 401);
+
+  // 重置密码：重置后新密码随响应返回，且可用新密码登录
+  r = await call('POST', '/api/admin/accounts/2/reset-password', {}, T_SUP);
+  check(N, '超级管理员重置会员密码', '200 + newPassword=123456',
+        `${r.status} ${r.data && r.data.newPassword}`,
+        r.status === 200 && r.data && r.data.newPassword === '123456');
+  check(N, '重置响应不返回任何历史密码', '响应仅含 newPassword',
+        Object.keys(r.data || {}).join(','), r.status === 200 && !('oldPassword' in (r.data || {})));
+
+  r = await login('member2', '123456');
+  check(N, '用重置后的密码可以登录', '200', `${r.status}`, r.status === 200);
+
+  // 停用 → 不能登录 → 恢复启用
+  r = await call('POST', '/api/admin/accounts/2/toggle-status', {}, T_SUP);
+  check(N, '停用账号', '200 + status=disabled', `${r.status} ${r.data && r.data.status}`,
+        r.status === 200 && r.data.status === 'disabled');
+  r = await login('member2', '123456');
+  check(N, '停用后不能登录', '401', `${r.status}`, r.status === 401);
+  r = await call('POST', '/api/admin/accounts/2/toggle-status', {}, T_SUP);
+  check(N, '重新启用账号', '200 + status=active', `${r.status} ${r.data && r.data.status}`,
+        r.status === 200 && r.data.status === 'active');
+  r = await login('member2', '123456');
+  check(N, '恢复后可以再次登录', '200', `${r.status}`, r.status === 200);
+
+  const selfId = sup.data.user.userId;
+  r = await call('POST', `/api/admin/accounts/${selfId}/toggle-status`, {}, T_SUP);
+  check(N, '不能停用当前登录的账号', '非 200', `${r.status}`, r.status !== 200);
+
+  /* ==================== O 周课表（课程表 / 场馆占用表） ==================== */
+  const O = 'O 周课表';
+  // 全用本地日期格式化（toISOString 会按 UTC 截断，东八区会整体少一天）
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const parse = iso => new Date(iso.replace(/-/g, '/'));
+  const mondayOf = iso => {
+    const d = parse(iso);
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7));   // 周一为一周起始
+    return fmt(d);
+  };
+  const plusDays = (iso, n) => { const d = parse(iso); d.setDate(d.getDate() + n); return fmt(d); };
+  const count = tt => (tt && tt.days ? tt.days.reduce((n, d) => n + d.items.length, 0) : -1);
+
+  // 先给会员选一门本周的课，否则「我的课表」天然为空，断言不出东西
+  await call('POST', '/api/enrollments', { courseId: 11 }, T_M1);
+
+  r = await call('GET', '/api/timetable/overview', undefined, T_MGR);
+  check(O, '门店后台取课表总览', '200 + 课程课表 7 天 + 场地课表 7 天',
+        `${r.status} ${r.data && r.data.courses.days.length} / ${r.data && r.data.venues.days.length}`,
+        r.status === 200 && r.data.courses.days.length === 7 && r.data.venues.days.length === 7);
+  const ov = r.data;
+
+  check(O, '门店后台看到全店课程表与场馆占用课表', 'owner 含「全店」×2',
+        `${ov.courses.owner} | ${ov.venues.owner}`,
+        /全店/.test(ov.courses.owner) && /场馆占用/.test(ov.venues.owner));
+
+  check(O, '课表周区间为周一 ~ 周日', 'weekStart 是周一',
+        `${ov.courses.weekStart} ~ ${ov.courses.weekEnd}`,
+        mondayOf(ov.courses.weekStart) === ov.courses.weekStart
+        && ov.courses.weekEnd === plusDays(ov.courses.weekStart, 6));
+
+  // 传入周内任意一天，都应归一到同一个周一
+  const midweek = plusDays(ov.courses.weekStart, 3);
+  r = await call('GET', `/api/timetable/overview?week=${midweek}`, undefined, T_MGR);
+  check(O, '传周内任意一天都归一到同一周', `weekStart=${ov.courses.weekStart}`,
+        `weekStart=${r.data && r.data.courses.weekStart}`,
+        r.status === 200 && r.data.courses.weekStart === ov.courses.weekStart);
+
+  // 上一周 / 下一周
+  const prevWeek = plusDays(ov.courses.weekStart, -7);
+  r = await call('GET', `/api/timetable/overview?week=${prevWeek}`, undefined, T_MGR);
+  check(O, '上一周区间比本周早 7 天', `weekStart=${prevWeek}`,
+        `weekStart=${r.data && r.data.courses.weekStart}`,
+        r.status === 200 && r.data.courses.weekStart === prevWeek);
+
+  // 会员视角
+  r = await call('GET', '/api/timetable/overview', undefined, T_M1);
+  check(O, '会员看到本人课表', 'owner 含本人姓名', `${r.status} ${r.data && r.data.courses.owner}`,
+        r.status === 200 && /张三/.test(r.data.courses.owner));
+  r = await call('GET', '/api/timetable/courses?scope=all', undefined, T_M1);
+  check(O, '会员传 scope=all 仍被强制为 mine', "scope='mine'",
+        `scope=${r.data && r.data.scope}`, r.status === 200 && r.data.scope === 'mine');
+  const mineItems = r.data.days.flatMap(d => d.items);
+  check(O, '会员课表条目全部标记为本人相关', 'mine 全为 true',
+        `${mineItems.length} 项，mine=${mineItems.filter(i => i.mine).length}`,
+        mineItems.length > 0 && mineItems.every(i => i.mine));
+
+  // 教练视角
+  r = await call('GET', '/api/timetable/overview', undefined, T_COACH1);
+  check(O, '教练看到本人授课课表', 'owner 含教练名', `${r.status} ${r.data && r.data.courses.owner}`,
+        r.status === 200 && /教练/.test(r.data.courses.owner));
+  r = await call('GET', '/api/timetable/courses?scope=all&memberId=1', undefined, T_COACH1);
+  check(O, '教练传 scope=all 也被强制为 mine', "scope='mine'",
+        `scope=${r.data && r.data.scope}`, r.status === 200 && r.data.scope === 'mine');
+
+  // 门店按教练筛选
+  r = await call('GET', '/api/timetable/courses?scope=all&coachId=101', undefined, T_MGR);
+  const coachItems = r.status === 200 ? r.data.days.flatMap(d => d.items) : [];
+  check(O, '门店按教练筛选课程课表', '200 + 全部条目为教练 101',
+        `${r.status} ${coachItems.length} 项`,
+        r.status === 200 && coachItems.length > 0 && coachItems.every(i => /王教练/.test(i.subtitle)));
+
+  // 门店按会员筛选
+  r = await call('GET', '/api/timetable/courses?scope=all&memberId=1', undefined, T_MGR);
+  check(O, '门店按会员筛选课程课表', '200 + owner 含会员名',
+        `${r.status} ${r.data && r.data.courses ? '' : r.data.owner}`,
+        r.status === 200 && /张三/.test(r.data.owner));
+
+  // 场馆占用：与预约列表口径一致（只算 booked）
+  r = await call('GET', '/api/venue-bookings', undefined, T_MGR);
+  const vbAll = Array.isArray(r.data) ? r.data : [];
+  const thisWeek = vbAll.filter(b => b.status === 'booked'
+      && b.startTime >= ov.courses.weekStart && b.startTime <= ov.courses.weekEnd + 'T23:59:59');
+  r = await call('GET', '/api/timetable/venues?scope=all', undefined, T_MGR);
+  check(O, '场馆占用课表条数 = 本周 booked 预约数', `${thisWeek.length} 段`,
+        `${r.status} ${count(r.data)} 段`, r.status === 200 && count(r.data) === thisWeek.length);
+
+  r = await call('GET', '/api/timetable/venues?scope=all&venueId=5', undefined, T_MGR);
+  check(O, '场馆占用课表可按场馆筛选', 'owner 含该场馆名', `${r.status} ${r.data && r.data.owner}`,
+        r.status === 200 && r.data.owner !== '场馆占用课表（全店）');
+
+  r = await call('GET', '/api/timetable/overview');
+  check(O, '未登录不能取课表', '401', `${r.status}`, r.status === 401);
+
   /* ==================== F 会话 ==================== */
   const F = 'F 会话管理';
   r = await call('POST', '/api/auth/logout', {}, T_M1);

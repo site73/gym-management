@@ -32,11 +32,16 @@ public record AuthSession(
     public boolean isCoach() { return "COACH".equals(role); }
     public boolean isAdmin() { return roles != null && roles.contains("admin"); }
 
+    /** 超级管理员（最高权限）：可管理全部账号 */
+    public boolean isSuperAdmin() { return roles != null && roles.contains("super_admin"); }
+
     /** 对外返回的用户信息（不含令牌） */
     public UserInfo toUserInfo() {
-        return new UserInfo(userId, username, displayName, roles, role, memberId, coachId, isAdmin());
+        return new UserInfo(userId, username, displayName, roles, role, memberId, coachId,
+                isAdmin(), isSuperAdmin());
     }
 
     public record UserInfo(Long userId, String username, String displayName,
-                           List<String> roles, String role, Long memberId, Long coachId, boolean admin) {}
+                           List<String> roles, String role, Long memberId, Long coachId,
+                           boolean admin, boolean superAdmin) {}
 }
