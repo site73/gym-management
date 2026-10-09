@@ -1,5 +1,7 @@
 package com.gym.venue.api;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.math.BigDecimal;
 
 /** 场馆 / 区域视图。 */
@@ -14,19 +16,23 @@ public record VenueView(
         String status) {
 
     /** private 私有场馆 / public 公共区域 */
+    @JsonProperty("typeCn")
     public String typeCn() {
         return isPublic() ? "公共区域" : "私有场馆";
     }
 
+    @JsonProperty("statusCn")
     public String statusCn() {
         return "available".equals(status) ? "可用" : "维护中";
     }
 
+    @JsonProperty("isPublic")
     public boolean isPublic() {
         return "public".equals(type);
     }
 
     /** 是否收费（私有场馆通常按时收费） */
+    @JsonProperty("chargeable")
     public boolean chargeable() {
         return hourlyFee != null && hourlyFee.signum() > 0;
     }

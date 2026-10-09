@@ -440,6 +440,212 @@ async function waitFor(fn, timeout = 15000) {
   const dupResult = await page.textContent('#scanResult');
   check(J, '重复核销被拒绝', '提示核销失败（状态冲突）', dupResult.slice(0, 34), dupResult.includes('核销失败'));
 
+  /* ---------- K 会员端：场地预约 ---------- */
+  const K = 'K 场地预约';
+  const relogin = async (identity, user) => {
+    await page.click('header .user button');
+    await page.waitForSelector('#loginBtn:visible', { timeout: 8000 });
+    await page.click('#' + identity);
+    await page.fill('#loginUser', user);
+    await page.fill('#loginPass', '123456');
+    await page.click('#loginBtn');
+  };
+
+  await relogin('idMember', 'member1');
+  await page.waitForSelector('#nav-venues', { timeout: 10000 });
+  check(K, '会员左侧导航有「场地预约」入口', '可见', await page.isVisible('#nav-venues') ? '可见' : '隐藏',
+        await page.isVisible('#nav-venues'));
+
+  await page.click('#nav-venues');
+  await waitFor(async () => (await page.locator('#venueList .venue-card').count()) > 0);
+  const venueCards = await page.locator('#venueList .venue-card').count();
+  const venueText = await page.textContent('#venueList');
+  check(K, '场馆列表渲染 5 处（4 私有 + 1 公共）',
+        '5 张卡片且含公共区域',
+        `${venueCards} 张；含公共区域=${venueText.includes('公共区域')}`,
+        venueCards >= 5 && venueText.includes('私有场馆') && venueText.includes('公共区域'));
+
+  await page.locator('#venueList .venue-card').first().click();
+  await sleep(300);
+  const pickHint = await page.textContent('#venuePickHint');
+  check(K, '点选场馆后给出已选提示', '含"已选择"', pickHint.slice(0, 30), pickHint.includes('已选择'));
+
+  // 用一个较远的日期避免与其它用例冲突
+  const far = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+  await page.fill('#vbDate', far);
+  await page.fill('#vbStart', '08:00');
+  await page.fill('#vbEnd', '09:00');
+  await page.click('#viewVenues button:has-text("提交预约")');
+  const bookedOk = await waitForText(page, '#venueBookingMsg', '预约成功');
+  check(K, '提交场地预约成功', '提示"预约成功"',
+        (await page.textContent('#venueBookingMsg')).slice(0, 30), bookedOk);
+
+  // 重新选中同一场馆，再提交同一时段 → 应被冲突校验拒绝
+  await page.locator('#venueList .venue-card').first().click();
+  await sleep(300);
+  await page.fill('#vbDate', far);
+  await page.fill('#vbStart', '08:00');
+  await page.fill('#vbEnd', '09:00');
+  await page.click('#viewVenues button:has-text("提交预约")');
+  await sleep(1000);
+  const dupMsg = await page.textContent('#venueBookingMsg');
+  check(K, '同场地同时段重复预约被拒绝', '提示失败（时段不可重叠）',
+        dupMsg.slice(0, 46), dupMsg.includes('预约失败'));
+
+  await page.click('#nav-myVenueBookings');
+  await waitFor(async () => (await page.locator('#myVenueBookings .card').count()) > 0);
+  const myVbCount = await page.locator('#myVenueBookings .card').count();
+  check(K, '「我的场地预约」显示预约记录', '≥1 条', `${myVbCount} 条`, myVbCount >= 1);
+
+  const beforeCancel = await page.locator('#myVenueBookings button:has-text("取消预约"):not([disabled])').count();
+  if (beforeCancel > 0) {
+    await page.locator('#myVenueBookings button:has-text("取消预约"):not([disabled])').first().click();
+    await sleep(1200);
+    const cancelText = await page.textContent('#myVenueBookings');
+    check(K, '取消场地预约成功', '列表出现"已取消"', cancelText.includes('已取消') ? '已取消' : '未变化',
+          cancelText.includes('已取消'));
+  } else {
+    check(K, '取消场地预约成功', '存在可取消的预约', '未找到按钮', false);
+  }
+
+  /* ---------- L 教练端 ---------- */
+  const L = 'L 教练端';
+  await relogin('idCoach', 'coach1');
+  await page.waitForSelector('#nav-coachCourses', { timeout: 10000 });
+  check(L, '教练登录后进入教练端', '角色标签含"教练端"',
+        await page.textContent('#roleTag'), (await page.textContent('#roleTag')).includes('教练端'));
+
+  const coachNavCount = await page.locator('#sidebar button').count();
+  check(L, '教练端导航只有教练菜单', '2 项（我的课表 / 学员名单）', `${coachNavCount} 项`, coachNavCount === 2);
+
+  const coachNavText = await page.textContent('#sidebar');
+  check(L, '教练端看不到门店菜单', '无约课管理/场馆管理等',
+        coachNavText.replace(/\s+/g, ' ').slice(0, 36),
+        !coachNavText.includes('约课管理') && !coachNavText.includes('场馆管理') && !coachNavText.includes('系统管理'));
+
+  const coachProfile = await page.textContent('#coachProfile');
+  check(L, '教练本人档案渲染', '含姓名与擅长项目',
+        coachProfile.replace(/\s+/g, ' ').slice(0, 34), coachProfile.includes('王教练'));
+
+  await waitFor(async () => (await page.locator('#coachCourseBox .card').count()) >= 0);
+  const coachCourses = await page.locator('#coachCourseBox .card').count();
+  check(L, '我的课表渲染', '≥1 门（王教练名下课程）', `${coachCourses} 门`, coachCourses >= 1);
+
+  await page.click('#nav-coachRoster');
+  await sleep(900);
+  const rosterOptions = await page.locator('#coachRosterCourse option').count();
+  check(L, '学员名单页可选题自己的课程', '下拉有选项', `${rosterOptions} 项`, rosterOptions >= 1);
+
+  await page.click('#viewCoachRoster button:has-text("查看名单")');
+  const rosterRendered = await waitFor(async () => {
+    const t = await page.textContent('#coachRosterBox');
+    return t.includes('共') || t.includes('暂无');
+  });
+  check(L, '查看学员名单有响应', '显示名单或"暂无报名"',
+        (await page.textContent('#coachRosterBox')).replace(/\s+/g, ' ').slice(0, 34), rosterRendered);
+
+  /* ---------- M 门店：教练 / 场馆 / 场地预约管理 ---------- */
+  const M = 'M 管理页';
+  await relogin('idManager', 'manager');
+  await page.waitForSelector('#nav-coachAdmin', { timeout: 10000 });
+  check(M, '门店导航含教练/场馆/场地预约管理', '三项均可见',
+        `${await page.isVisible('#nav-coachAdmin')}/${await page.isVisible('#nav-venueAdmin')}/${await page.isVisible('#nav-venueBookingAdmin')}`,
+        await page.isVisible('#nav-coachAdmin') && await page.isVisible('#nav-venueAdmin') && await page.isVisible('#nav-venueBookingAdmin'));
+
+  await page.click('#nav-coachAdmin');
+  await waitFor(async () => (await page.locator('#coachAdminBox tr').count()) >= 2);
+  const coachRows = await page.locator('#coachAdminBox tr').count();
+  check(M, '教练管理列表渲染', '≥2 行（含表头）', `${coachRows} 行`, coachRows >= 2);
+
+  const newCoachCode = 'K7' + String(Date.now()).slice(-4);
+  await page.fill('#cfCoachCode', newCoachCode);
+  await page.fill('#cfCoachName', '浏览器新增教练');
+  await page.fill('#cfCoachSpec', '拉伸放松');
+  await page.click('#viewCoachAdmin button:has-text("保存教练")');
+  await sleep(1200);
+  // 教练数量会随测试累积，新教练可能落在第二页；用搜索精确定位（同时顺带验证教练列表搜索）
+  await page.fill('#coachAdminSearch', '浏览器新增教练');
+  await sleep(400);
+  const coachAdded = await waitForText(page, '#coachAdminBox', '浏览器新增教练');
+  check(M, '新增教练有响应（列表可搜到）', '列表出现新教练', coachAdded ? '已新增并可搜索到' : '未出现', coachAdded);
+  await page.click('#coachAdminClear');
+  await sleep(300);
+
+  await page.click('#nav-venueAdmin');
+  await waitFor(async () => (await page.locator('#venueAdminBox tr').count()) >= 6);
+  const venueRows = await page.locator('#venueAdminBox tr').count();
+  check(M, '场馆管理列表渲染 5 处', '6 行（含表头）', `${venueRows} 行`, venueRows >= 6);
+
+  await page.locator('#venueAdminBox button:has-text("编辑")').first().click();
+  await sleep(400);
+  const venueFormTitle = await page.textContent('#venueFormTitle');
+  check(M, '点「编辑」载入场馆表单', '标题含"编辑场馆"', venueFormTitle.slice(0, 20),
+        venueFormTitle.includes('编辑场馆'));
+  await page.click('#viewVenueAdmin button:has-text("保存场馆")');
+  await sleep(1200);
+  const venueSaved = await page.locator('#venueAdminBox tr').count() >= 6;
+  check(M, '保存场馆有响应', '列表刷新', venueSaved ? '已刷新' : '未刷新', venueSaved);
+
+  await page.click('#nav-venueBookingAdmin');
+  await waitFor(async () => {
+    const t = await page.textContent('#venueBookingAdminBox');
+    return t.includes('场馆') || t.includes('暂无');
+  });
+  const vbAdminText = await page.textContent('#venueBookingAdminBox');
+  check(M, '场地预约管理可查看全部预约', '渲染表格或"暂无"',
+        vbAdminText.replace(/\s+/g, ' ').slice(0, 30), !!vbAdminText);
+
+  const vbFar = new Date(Date.now() + 40 * 86400000).toISOString().slice(0, 10);
+  await page.fill('#vbAdminDate', vbFar);
+  await page.fill('#vbAdminStart', '16:00');
+  await page.fill('#vbAdminEnd', '17:00');
+  await page.click('#viewVenueBookingAdmin button:has-text("代客预约")');
+  const staffVbOk = await waitForText(page, '#vbAdminMsg', '代客预约成功');
+  check(M, '门店代客预约场地成功', '提示"代客预约成功"',
+        (await page.textContent('#vbAdminMsg')).slice(0, 30), staffVbOk);
+
+  /* ---------- N 报名名单弹窗与分页 ---------- */
+  const N = 'N 名单与分页';
+  await page.click('#nav-booking');
+  await waitFor(async () => (await page.locator('#courseBox .card').count()) > 0);
+  const rosterBtn = page.locator('#courseBox button:has-text("查看名单")').first();   // 已限定容器
+  check(N, '门店课程卡有「查看名单」按钮', '≥1 个', `${await page.locator('#courseBox button:has-text("查看名单")').count()} 个`,
+        await page.locator('#courseBox button:has-text("查看名单")').count() >= 1);
+
+  if (await rosterBtn.count() > 0) {
+    await rosterBtn.click();
+    await page.waitForSelector('#modalMask:not(.hidden)', { timeout: 5000 });
+    const rosterHtml = await page.textContent('#modalBox');
+    check(N, '点「查看名单」弹出报名名单', '弹窗含"共 N 人"',
+          rosterHtml.replace(/\s+/g, ' ').slice(0, 34), rosterHtml.includes('共'));
+    await page.click('#modalBox button:has-text("关闭")');
+    await sleep(300);
+    check(N, '名单弹窗可关闭', '弹窗隐藏', await page.isVisible('#modalMask') ? '仍可见' : '已关闭',
+          !(await page.isVisible('#modalMask')));
+  }
+
+  const pagerText = await page.textContent('#courseBox');
+  check(N, '课程列表分页控件存在', '含"共 N 条 · 第 x/y 页"',
+        (pagerText.match(/共 \d+ 条 · 第 \d+\/\d+ 页/) || ['（无分页）'])[0],
+        /共 \d+ 条 · 第 \d+\/\d+ 页/.test(pagerText));
+
+  const pageBtns = await page.locator('#courseBox .pager button.pg').count();
+  check(N, '分页按钮可点击', '≥3 个（上一页/页码/下一页）', `${pageBtns} 个`, pageBtns >= 3);
+
+  if (pageBtns >= 3) {
+    const firstCardBefore = await page.locator('#courseBox .card').first().textContent();
+    const nextBtn = page.locator('#courseBox .pager button.pg:has-text("下一页")');
+    if (await nextBtn.isEnabled().catch(() => false)) {
+      await nextBtn.click();
+      await sleep(500);
+      const firstCardAfter = await page.locator('#courseBox .card').first().textContent();
+      check(N, '点「下一页」列表内容变化', '首张卡片不同',
+            firstCardBefore !== firstCardAfter ? '已切换' : '未变化', firstCardBefore !== firstCardAfter);
+    } else {
+      check(N, '点「下一页」列表内容变化', '仅一页时按钮禁用', '当前只有一页（按钮已禁用）', true);
+    }
+  }
+
   /* ---------- F 运行时健康 ---------- */
   const F = 'F 运行时健康';
     check(E, '无 JS 控制台错误', '0 个',

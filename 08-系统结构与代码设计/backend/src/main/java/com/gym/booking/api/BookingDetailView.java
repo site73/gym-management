@@ -1,5 +1,7 @@
 package com.gym.booking.api;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.time.LocalDateTime;
 
 /**
@@ -20,6 +22,7 @@ public record BookingDetailView(
         LocalDateTime bookedAt,
         LocalDateTime checkinAt) {
 
+    @JsonProperty("statusText")
     public String statusText() {
         return switch (status == null ? "" : status) {
             case "booked" -> "已预约";
@@ -30,6 +33,7 @@ public record BookingDetailView(
         };
     }
 
+    @JsonProperty("channelText")
     public String channelText() {
         if (checkinChannel == null) return "—";
         return "front_desk".equals(checkinChannel) ? "前台代签" : "扫码";

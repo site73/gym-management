@@ -70,6 +70,35 @@ const quoteIssues = handlers.filter(h => {
 check('FE-002', 'onclick 参数均已加引号', quoteIssues.length ? '未加引号: ' + quoteIssues.join(' | ') : `${handlers.length} 个处理器`, quoteIssues.length === 0);
 check('FE-003', 'onclick 调用的函数均已定义', undefinedFns.length ? undefinedFns.join(' | ') : `${defined.size} 个函数`, undefinedFns.length === 0);
 
+/* ---------- 6. 未声明的全局常量引用（防 "XXX_CN is not defined" 类运行时错误） ---------- */
+// 背景：曾出现 VENUE_BOOKING_CN 未定义导致整段渲染中断，而语法检查与 onclick 检查都发现不了。
+// 做法：收集所有声明（const/let/var/function），再扫描形如 FOO_BAR 的全大写标识符引用，
+// 若既未声明、也不在内置白名单内，则报错。
+const declared = new Set([...defined]);
+for (const m of js.matchAll(/(?:const|let|var)\s+([A-Za-z_$][\w$]*)/g)) declared.add(m[1]);
+const BUILTIN = new Set([
+  'JSON', 'Math', 'Date', 'Number', 'String', 'Boolean', 'Array', 'Object', 'Promise',
+  'Map', 'Set', 'RegExp', 'Error', 'URL', 'URLSearchParams', 'TextEncoder', 'TextDecoder',
+  'console', 'fetch', 'alert', 'confirm', 'prompt', 'setTimeout', 'setInterval', 'clearTimeout',
+  'clearInterval', 'localStorage', 'sessionStorage', 'document', 'window', 'location', 'history',
+  'navigator', 'requestAnimationFrame', 'AbortSignal', 'Intl', 'Symbol', 'BigInt', 'Infinity',
+  'NaN', 'undefined', 'null', 'true', 'false', 'this', 'parseInt', 'parseFloat', 'isNaN',
+  'encodeURIComponent', 'decodeURIComponent', 'btoa', 'atob', 'XMLSerializer', 'Image',
+  'CSS', 'HTMLElement', 'Node', 'Event', 'DOMParser', 'Blob', 'File', 'FileReader',
+]);
+const declaredCi = new Set([...declared]);
+const missingConsts = [];
+for (const m of js.matchAll(/\b([A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+)\b/g)) {
+  const name = m[1];
+  if (declaredCi.has(name) || BUILTIN.has(name)) continue;
+  // 排除纯大写单词（如 TODO/OK/ID/URL 等无下划线的短词已由正则要求至少一个下划线）
+  missingConsts.push(name);
+}
+const uniqMissingConsts = [...new Set(missingConsts)];
+check('FE-006', '引用的全局常量均已声明',
+      uniqMissingConsts.length ? '未声明: ' + uniqMissingConsts.join(', ') : `${declared.size} 个声明`,
+      uniqMissingConsts.length === 0);
+
 /* ---------- 4. $('id') 元素存在性 ---------- */
 const ids = new Set([...html.matchAll(/\bid\s*=\s*"([^"]+)"/g)].map(m => m[1]));
 const missingIds = [];

@@ -1498,7 +1498,7 @@ async function loadMyVenueBookings() {
     return `<div class="card">
       <div class="t">${b.venueName} <span class="chip">${b.venueType === 'public' ? '公共区域' : '私有场馆'}</span></div>
       <div class="m">时间：${String(b.startTime).slice(5, 16).replace('T', ' ')} ~ ${String(b.endTime).slice(11, 16)}
-        ｜状态：<span class="chip ${cls}">${VENUE_BOOKING_CN[b.status] || b.status}</span>
+        ｜状态：<span class="chip ${cls}">${VENUE_STATUS_CN[b.status] || b.status}</span>
         ｜来源：${b.createdBy ? '门店代约' : '会员自助'}</div>
       <div><button class="btn warn" ${can ? '' : 'disabled'} onclick="cancelMyVenueBooking('${b.id}')">取消预约</button></div>
     </div>`;
@@ -1754,7 +1754,7 @@ async function loadVenueBookingAdmin() {
         <td>${b.venueType === 'public' ? '公共区域' : '私有场馆'}</td>
         <td>${b.memberName}</td>
         <td>${String(b.startTime).slice(5, 16).replace('T', ' ')} ~ ${String(b.endTime).slice(11, 16)}</td>
-        <td><span class="chip ${b.status === 'booked' ? 'ok' : 'err'}">${VENUE_BOOKING_CN[b.status] || b.status}</span></td>
+        <td><span class="chip ${b.status === 'booked' ? 'ok' : 'err'}">${VENUE_STATUS_CN[b.status] || b.status}</span></td>
         <td>${b.createdBy ? '门店代约' : '会员自助'}</td>
         <td><button class="btn ghost" ${can ? '' : 'disabled'} onclick="staffCancelVenueBooking('${b.id}')">取消</button></td>
       </tr>`;
