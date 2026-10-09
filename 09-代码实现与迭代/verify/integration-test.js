@@ -67,6 +67,11 @@ const login = async (u, p) => call('POST', '/api/auth/login', { username: u, pas
 
   const T_M1 = m1.data.token, T_MGR = mgr.data.token, T_ADM = adm.data.token;
 
+  // 让测试自带复位：先重置一次演示数据，避免依赖外部脚本或执行顺序
+  // （否则浏览器测试先跑过、把某条预约签到掉之后，本脚本的签到用例会命中状态冲突）
+  const reset0 = await call('POST', '/api/admin/reset', {}, T_ADM);
+  check(A, '测试自带复位（重置演示数据）', '200', `${reset0.status}`, reset0.status === 200);
+
   r = await call('GET', '/api/auth/me', undefined, T_M1);
   check(A, '凭令牌获取当前用户', '200 + member1', `${r.status} ${r.data && r.data.username}`,
         r.status === 200 && r.data.username === 'member1');

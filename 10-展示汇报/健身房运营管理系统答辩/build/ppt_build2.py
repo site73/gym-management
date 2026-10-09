@@ -339,9 +339,9 @@ def p17(prs):
 def p18(prs):
     """200 项六层检查"""
     sl = blank(prs, C['white'])
-    header(sl, '243 项检查，覆盖七个层次')
+    header(sl, '244 项检查，覆盖七个层次')
     rect(sl, 40, 108, 420, 452, fill=C['light'], line=None, radius=12)
-    text(sl, 60, 146, 380, 152, '243', size=116, bold=True, color=C['deep'],
+    text(sl, 60, 146, 380, 152, '244', size=116, bold=True, color=C['deep'],
          valign='middle', spacing=1.0)
     text(sl, 60, 306, 380, 40, '项自动化检查全部通过', size=22, color=C['t1'], valign='middle')
     text(sl, 60, 356, 380, 180,
@@ -349,7 +349,7 @@ def p18(prs):
          size=19, color=C['t2'], spacing=1.6)
     rows = [
         ('Java 单元 · 架构守卫 · 行为驱动', '73'),
-        ('集成测试（登录 / 权限 / 全流程）', '68'),
+        ('集成测试（登录 / 权限 / 全流程）', '69'),
         ('前端静态检查（防按钮无响应）', '5'),
         ('真实浏览器测试（含身份与二维码）', '56'),
         ('二维码结构校验（反解还原）', '5'),
@@ -438,7 +438,7 @@ def p21(prs):
             'S2 收费：下单、支付、回调幂等、异常订单、对账',
             'S4 预警：流失风险、爽约预测、新会员跟进',
             '登录与角色鉴权（服务端强制，越权拦截已测）',
-            '七层 243 项自动化检查 + 一键启动脚本']
+            '七层 244 项自动化检查 + 一键启动脚本']
     y = 176
     for d in done:
         rect(sl, 62, y, 656, 66, fill='FFFFFF', line=C['line'], radius=8)

@@ -12,11 +12,25 @@
   body{margin:0;font-family:"Microsoft YaHei",system-ui,sans-serif;background:var(--bg);color:var(--text)}
   .hidden{display:none !important}
 
-  /* ---------- 登录页 ---------- */
-  #loginView{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2f5597,#4a7ac7)}
-  .login-box{background:#fff;border-radius:14px;padding:28px 30px;width:380px;box-shadow:0 10px 40px rgba(0,0,0,.18)}
-  .login-box h1{font-size:18px;margin:0 0 4px}
-  .login-box .sub{color:var(--muted);font-size:12px;margin-bottom:18px}
+  /* ---------- 登录页：健身房实景背景 + 深色遮罩，居中突出卡片 ---------- */
+  #loginView{min-height:100vh;display:flex;align-items:center;justify-content:center;position:relative;
+    background:linear-gradient(rgba(8,16,30,.42) 0%, rgba(8,16,30,.62) 55%, rgba(8,16,30,.80) 100%),
+               url('/img/login-bg.jpg') center center / cover no-repeat}
+  #loginView::after{content:'';position:absolute;left:0;right:0;bottom:0;height:160px;
+    background:linear-gradient(transparent,rgba(4,10,20,.66));pointer-events:none}
+  .login-box{position:relative;z-index:1;background:rgba(255,255,255,.96);
+    -webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+    border:1px solid rgba(255,255,255,.9);border-radius:16px;padding:32px 32px 24px;width:392px;
+    box-shadow:0 26px 70px rgba(0,0,0,.45),0 2px 10px rgba(0,0,0,.2)}
+  .login-box::before{content:'';position:absolute;left:0;right:0;top:0;height:5px;border-radius:16px 16px 0 0;
+    background:linear-gradient(90deg,#2f5597,#4a7ac7,#8ab4f0)}
+  .brand{display:flex;align-items:center;gap:11px;margin-bottom:6px}
+  .brand-mark{width:38px;height:38px;flex:0 0 38px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#2f5597,#4a7ac7);color:#fff;font-size:12px;font-weight:800;letter-spacing:.5px}
+  .login-box h1{font-size:19px;margin:0;letter-spacing:.5px}
+  .login-box .sub{color:var(--muted);font-size:12px;margin:0 0 16px 49px}
+  .login-foot{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);
+    font-size:11px;color:var(--muted);text-align:center;line-height:1.6}
   .login-box label{display:block;font-size:13px;margin:10px 0 4px;color:var(--muted)}
   .login-box input{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;font-size:14px}
   .login-box button{width:100%;margin-top:18px;padding:10px;background:var(--primary);color:#fff;border:0;border-radius:8px;font-size:14px;cursor:pointer}
@@ -104,7 +118,10 @@
 <!-- ==================== 登录 ==================== -->
 <div id="loginView">
   <div class="login-box">
-    <h1>健身房运营管理系统</h1>
+    <div class="brand">
+      <div class="brand-mark">GYM</div>
+      <h1>健身房运营管理系统</h1>
+    </div>
     <div class="sub">请先选择登录身份，再输入账号密码</div>
     <div id="loginFormBlock">
       <div class="login-step">第 1 步 · 选择身份</div>
@@ -147,6 +164,7 @@
         <tr><td>admin</td><td>管理员 · 门店后台（可重置数据）</td><td><button onclick="fillLogin('admin')">填充</button></td></tr>
       </table>
     </div>
+    <div class="login-foot">健身房会员运营与课程服务业务<br>登录即代表同意按角色使用系统功能</div>
   </div>
 </div>
 
