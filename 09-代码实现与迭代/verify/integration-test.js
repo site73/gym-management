@@ -714,6 +714,90 @@ const login = async (u, p) => call('POST', '/api/auth/login', { username: u, pas
   r = await call('GET', '/api/timetable/overview');
   check(O, '未登录不能取课表', '401', `${r.status}`, r.status === 401);
 
+  /* ==================== P 数据闭合（名单 ⇄ 余位） ==================== */
+  const P = 'P 数据闭合';
+  const tagP = String(Date.now()).slice(-6);
+  const sP0 = sFuture(4, 9), eP0 = sFuture(4, 10);
+
+  // 全量不变量：每门课的「名单条数（排除已取消）」必须等于 booked_count
+  r = await call('GET', '/api/courses', undefined, T_MGR);
+  const allCourses = Array.isArray(r.data) ? r.data : [];
+  let mismatch = 0, checkedN = 0;
+  for (const c of allCourses) {
+    const rr = await call('GET', `/api/courses/${c.id}/bookings`, undefined, T_MGR);
+    const list = Array.isArray(rr.data) ? rr.data : [];
+    checkedN++;
+    if (list.length !== c.bookedCount) mismatch++;
+  }
+  check(P, '全量不变量：所有课程的名单条数 = 已约人数', `${checkedN} 门全部闭合`,
+        `检查 ${checkedN} 门，不一致 ${mismatch} 门`,
+        checkedN >= 3 && mismatch === 0);
+
+  // 满员课程：瑜伽 15/15 → 名单必须有 15 个真实会员
+  const yoga = allCourses.find(c => c.code === 'C002');
+  if (yoga) {
+    r = await call('GET', `/api/courses/${yoga.id}/bookings`, undefined, T_MGR);
+    const list = Array.isArray(r.data) ? r.data : [];
+    check(P, '满员课程（15/15）的名单', '15 人且都有姓名与编号',
+          `${list.length} 人`,
+          list.length === 15 && list.every(x => !!x.memberName && !!x.memberNo));
+    check(P, '满员课程的名单示例', '含演示会员档案',
+          list.slice(0, 2).map(x => x.memberName).join('、'),
+          list.length === 15);
+  } else {
+    check(P, '满员课程（15/15）的名单', '找到瑜伽课', '未找到 C002', false);
+  }
+
+  // 写入路径闭合：建一门容量 3 的课 → 选课 +1 / 退课 -1，名单与余位同步变化
+  // （教练与房间都用唯一值，避免多次运行后撞上 SYS-R3 排课冲突——冲突校验本身是生效的）
+  const mk = await call('POST', '/api/courses', {
+    code: 'PC' + tagP, name: '闭合验证课', type: 'group',
+    coachId: 910000 + Number(tagP.slice(-4)), room: 'ZZC' + tagP,
+    startTime: sP0, endTime: eP0, capacity: 3
+  }, T_ADM);
+  check(P, '准备闭合验证课（容量 3）', '200 + 初始 0/3',
+        `${mk.status} ${mk.data && mk.data.bookedCount}/${mk.data && mk.data.capacity}`,
+        mk.status === 200 && mk.data.bookedCount === 0);
+  const pid = mk.data && mk.data.id;
+
+  const rosterCount = async () => {
+    const rr = await call('GET', `/api/courses/${pid}/bookings`, undefined, T_MGR);
+    return Array.isArray(rr.data) ? rr.data.length : -1;
+  };
+
+  const enP = await call('POST', '/api/enrollments', { courseId: pid }, T_M1);
+  const afterEn = await call('GET', '/api/courses/' + pid, undefined, T_MGR);
+  check(P, '选课后：余位 +1 且名单 +1', '1/3 且名单 1 人',
+        `${afterEn.data && afterEn.data.bookedCount}/3 · 名单 ${await rosterCount()} 人`,
+        enP.status === 200 && afterEn.data.bookedCount === 1 && (await rosterCount()) === 1);
+
+  // 王五没有登录账号 → 由店长代约（同时验证"门店代约"路径同样闭合）
+  const enP2 = await call('POST', '/api/bookings', { memberId: 3, courseId: pid }, T_MGR);
+  const afterEn2 = await call('GET', '/api/courses/' + pid, undefined, T_MGR);
+  check(P, '门店代约第二名会员后', '2/3 且名单 2 人',
+        `${afterEn2.data && afterEn2.data.bookedCount}/3 · 名单 ${await rosterCount()} 人`,
+        enP2.status === 200 && afterEn2.data.bookedCount === 2 && (await rosterCount()) === 2);
+
+  const staffCancel = await call('POST', `/api/bookings/${enP2.data.id || enP2.data.bookingId}/cancel`, {}, T_MGR);
+  const afterStaffCancel = await call('GET', '/api/courses/' + pid, undefined, T_MGR);
+  check(P, '门店取消代约后：余位与名单同步回落', '1/3 且名单 1 人',
+        `${afterStaffCancel.data && afterStaffCancel.data.bookedCount}/3 · 名单 ${await rosterCount()} 人`,
+        staffCancel.status === 200 && afterStaffCancel.data.bookedCount === 1 && (await rosterCount()) === 1);
+
+  const wdP = await call('POST', `/api/enrollments/${enP.data.bookingId}/withdraw`, {}, T_M1);
+  const afterWd = await call('GET', '/api/courses/' + pid, undefined, T_MGR);
+  check(P, '会员退课后：余位 -1 且名单 -1', '0/3 且名单 0 人',
+        `${afterWd.data && afterWd.data.bookedCount}/3 · 名单 ${await rosterCount()} 人`,
+        wdP.status === 200 && afterWd.data.bookedCount === 0 && (await rosterCount()) === 0);
+
+  // 取消的记录不进名单，但保留在库中可追溯
+  r = await call('GET', '/api/bookings', undefined, T_M1);
+  const hist = (Array.isArray(r.data) ? r.data : []).find(
+      b => String(b.courseId) === String(pid) && b.status === 'cancelled');
+  check(P, '退课记录保留在预约历史（可追溯）', 'booking 表仍有 cancelled 记录',
+        hist ? 'status=cancelled' : '未找到',
+        !!hist);
+
   /* ==================== F 会话 ==================== */
   const F = 'F 会话管理';
   r = await call('POST', '/api/auth/logout', {}, T_M1);

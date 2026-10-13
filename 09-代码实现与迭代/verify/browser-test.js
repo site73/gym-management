@@ -633,6 +633,8 @@ async function waitFor(fn, timeout = 15000) {
   const pageBtns = await page.locator('#courseBox .pager button.pg').count();
   check(N, '分页按钮可点击', '≥3 个（上一页/页码/下一页）', `${pageBtns} 个`, pageBtns >= 3);
 
+  await sleep(400);
+
   if (pageBtns >= 3) {
     const firstCardBefore = await page.locator('#courseBox .card').first().textContent();
     const nextBtn = page.locator('#courseBox .pager button.pg:has-text("下一页")');
@@ -646,6 +648,35 @@ async function waitFor(fn, timeout = 15000) {
       check(N, '点「下一页」列表内容变化', '仅一页时按钮禁用', '当前只有一页（按钮已禁用）', true);
     }
   }
+
+  /* ---------- N2 名单与余位严格闭合 ---------- */
+  // 满员课程（瑜伽 15/15）的名单必须有 15 个真实会员，而不是"共 0 人"
+  await page.click('#nav-course');
+  await waitFor(async () => (await page.locator('#adminCourseBox tr').count()) >= 2);
+  await page.fill('#adminCourseSearch', '瑜伽');
+  await sleep(600);
+  const yogaBtn = page.locator('#adminCourseBox button:has-text("名单")').first();
+  check(N, '满员课程可打开名单', '按钮存在', `${await yogaBtn.count()} 个`, await yogaBtn.count() >= 1);
+  if (await yogaBtn.count() > 0) {
+    await yogaBtn.click();
+    await page.waitForSelector('#modalMask:not(.hidden)', { timeout: 5000 });
+    await sleep(500);
+    const modalText = await page.textContent('#modalBox');
+    const m = modalText.match(/共 (\d+) 人/);
+    check(N, '满员课程名单人数 = 余位口径（15/15）', '共 15 人',
+          m ? `共 ${m[1]} 人` : modalText.replace(/\s+/g, ' ').slice(0, 30),
+          !!m && Number(m[1]) === 15);
+    const rosterRows = await page.locator('#modalBox table tr').count();
+    check(N, '名单逐行渲染真实会员', '15 行（不含表头）', `${rosterRows - 1} 行`,
+          rosterRows - 1 === 15);
+    const firstRoster = await page.locator('#modalBox table tr').nth(1).textContent();
+    check(N, '名单行含会员姓名与编号', '非空',
+          firstRoster.replace(/\s+/g, ' ').slice(0, 40),
+          /M\d+/.test(firstRoster) && firstRoster.trim().length > 5);
+    await page.click('#modalBox button:has-text("关闭")');
+    await sleep(300);
+  }
+  await page.fill('#adminCourseSearch', '');
 
   /* ---------- O 周课表（三视角） ---------- */
   const O = 'O 周课表';
