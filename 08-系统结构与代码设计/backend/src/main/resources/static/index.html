@@ -906,7 +906,7 @@ async function loadMyInfo() {
   const m = r.data;
   const statusCn = { active: '有效', expired: '过期', frozen: '冻结' }[m.status] || m.status;
   $('memberInfo').innerHTML = `<div class="card">
-      <div class="t">${m.name}${m.memberNo ? '（' + m.memberNo + '）' : ''}</div>
+      <div class="t">${safe(m.name)}${m.memberNo ? '（' + m.memberNo + '）' : ''}</div>
       <div class="m">会籍状态：<span class="chip ${m.status === 'active' ? 'ok' : 'err'}">${statusCn}</span>
         ｜课包余次：${m.packageRemaining ?? 0}
         ｜预约限制：${m.penaltyDaysRemaining > 0 ? m.penaltyDaysRemaining + ' 天' : '无'}
@@ -915,6 +915,11 @@ async function loadMyInfo() {
 }
 /* ---------- 搜索工具 ---------- */
 const norm = v => (v === null || v === undefined) ? '' : String(v).toLowerCase();
+
+/** HTML 转义：所有拼进 innerHTML 的用户输入（会员姓名 / 课程名 / 场馆名等）都必须经此转义，防存储型 XSS */
+const safe = v => String(v === null || v === undefined ? '' : v)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 function matchCourse(c, kw) {
   if (!kw) return true;
   return [c.name, c.code, c.room, c.coachId, c.type, c.status].map(norm).join(' ').includes(kw);
@@ -1037,12 +1042,12 @@ async function loadMembers() {
     const on = String(pickedMemberId) === String(m.id);
     const booked = (state.bookings || []).filter(b => String(b.memberId) === String(m.id) && b.status === 'booked').length;
     return `<span class="member-pick ${on ? 'active' : ''}" onclick="pickMember('${m.id}')">
-      ${m.name}
+      ${safe(m.name)}
       <span class="chip ${m.status === 'active' ? 'ok' : m.status === 'potential' ? 'warn' : 'err'}">${cn[m.status] || m.status}</span>
       <span class="m">${m.memberNo || ''}｜课包 ${m.packageRemaining ?? 0} 次｜已约 ${booked} 门${m.penaltyDaysRemaining > 0 ? '｜限制 ' + m.penaltyDaysRemaining + ' 天' : ''}</span>
     </span>`;
   }).join('');
-  $('orderMember').innerHTML = state.members.map(m => `<option value="${m.id}">${m.name}</option>`).join('');
+  $('orderMember').innerHTML = state.members.map(m => `<option value="${m.id}">${safe(m.name)}</option>`).join('');
   renderPickedHint();
 }
 
@@ -1416,7 +1421,7 @@ async function runPrediction() {
   $('predictBox').innerHTML = `<div class="m">课程：${d.courseName}｜阈值 T=${d.threshold}｜剩余名额 ${d.remaining}</div>` +
     (d.rows.length === 0 ? '暂无待核验预约' : `<table>
       <tr><th>预约号</th><th>会员</th><th>爽约概率</th><th>建议动作</th></tr>
-      ${d.rows.map(x => `<tr><td>${x.bookingId}</td><td>${x.memberName}</td>
+      ${d.rows.map(x => `<tr><td>${x.bookingId}</td><td>${safe(x.memberName)}</td>
         <td><span class="chip ${x.prob > d.threshold ? 'err' : ''}">${x.prob}</span></td>
         <td>${x.action === 'remind' ? '发送提醒' : x.action === 'release' ? '释放名额给候补' : '无需处理'}</td></tr>`).join('')}
     </table>`);
@@ -1609,11 +1614,6 @@ const TT_ANCHOR = { page: null, course: null, venue: null };
 let ttOverview = null;              // 最近一次 /api/timetable/overview 的结果
 let courseViewMode = 'list';        // 课程管理：list | week
 let venueViewMode = 'list';         // 场馆管理：list | week
-
-/** HTML 转义：课表条目里包含用户输入的场馆名 / 会员姓名，必须转义后再拼字符串 */
-const safe = v => String(v === null || v === undefined ? '' : v)
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 const pad2 = n => String(n).padStart(2, '0');
 function isoDay(d) { return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
@@ -1821,7 +1821,7 @@ async function showCourseRoster(courseId, courseName) {
           const cls = b.status === 'checked_in' ? 'ok' : (b.status === 'no_show' || b.status === 'cancelled') ? 'err' : '';
           const ch = b.checkinChannel === 'front_desk' ? '前台代签' : (b.checkinChannel ? '扫码' : '—');
           return `<tr>
-            <td>${i + 1}</td><td>${b.memberName}</td><td>${b.memberNo || '—'}</td>
+            <td>${i + 1}</td><td>${safe(b.memberName)}</td><td>${b.memberNo || '—'}</td>
             <td><span class="chip ${cls}">${STATUS_CN[b.status] || b.status}</span></td>
             <td>${ch}</td>
             <td>${String(b.bookedAt || '').slice(5, 16).replace('T', ' ')}</td>
@@ -1990,7 +1990,7 @@ async function loadCoachRosterTable() {
       ${list.map((b, i) => {
         const can = b.status === 'booked';
         return `<tr>
-          <td>${i + 1}</td><td>${b.memberName}</td><td>${b.memberNo || '—'}</td>
+          <td>${i + 1}</td><td>${safe(b.memberName)}</td><td>${b.memberNo || '—'}</td>
           <td><span class="chip ${b.status === 'checked_in' ? 'ok' : (b.status === 'no_show' || b.status === 'cancelled') ? 'err' : ''}">${STATUS_CN[b.status] || b.status}</span></td>
           <td><button class="btn ghost" ${can ? '' : 'disabled'} onclick="coachCheckin('${b.id}')">核销签到</button></td>
         </tr>`;
@@ -2162,7 +2162,7 @@ async function loadVenueBookingAdmin() {
       return `<tr>
         <td>${i + 1}</td><td>${b.venueName}</td>
         <td>${b.venueType === 'public' ? '公共区域' : '私有场馆'}</td>
-        <td>${b.memberName}</td>
+        <td>${safe(b.memberName)}</td>
         <td>${String(b.startTime).slice(5, 16).replace('T', ' ')} ~ ${String(b.endTime).slice(11, 16)}</td>
         <td><span class="chip ${b.status === 'booked' ? 'ok' : 'err'}">${VENUE_STATUS_CN[b.status] || b.status}</span></td>
         <td>${b.createdBy ? '门店代约' : '会员自助'}</td>
@@ -2179,7 +2179,7 @@ async function loadMembersForVenueAdmin() {
   }
   const sel = $('vbAdminMember');
   if (sel && sel.options.length === 0) {
-    sel.innerHTML = state.members.map(m => `<option value="${m.id}">${m.name}（${m.memberNo || ''}）</option>`).join('');
+    sel.innerHTML = state.members.map(m => `<option value="${m.id}">${safe(m.name)}（${safe(m.memberNo || '')}）</option>`).join('');
   }
   const dEl = $('vbAdminDate');
   if (dEl && !dEl.value) dEl.value = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
