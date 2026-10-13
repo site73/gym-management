@@ -15,16 +15,25 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 演示排课对齐（保证「周课表」视图始终有内容）。
+ * 演示数据对齐（保证「周课表」有内容、且**报名名单与课程余位严格闭合**）。
  *
- * <p><b>为什么需要</b>：种子脚本里的演示课程用 {@code CURDATE()} 落库，但 Flyway 的
+ * <p><b>为什么需要（一）</b>：种子脚本里的演示课程用 {@code CURDATE()} 落库，但 Flyway 的
  * R__ 脚本只在内容变化时重跑，时间一长这些课程就漂移到过去的某一周，
  * 于是「本周课表」「场馆占用课表」全是空的——功能没坏，演示却像坏了。
  *
- * <p><b>做法与边界</b>：只在<b>本周完全没有任何排课 / 没有任何场地占用</b>时才介入，
- * 一旦系统里已有本周的真实数据就立刻退出，绝不覆盖用户数据；
- * 介入时只调整 3 门基础演示课程（C001/C002/C003，id 11/12/13），
- * 并补 4 条演示场地预约，使会员端、教练端、门店后台三个视角的课表都有东西可看。
+ * <p><b>为什么需要（二）</b>：种子里 {@code course.booked_count} 是直接写死的（18/15/5），
+ * 却没有对应的 {@code booking} 行，于是出现「课程显示 15/15 已满，报名名单却是共 0 人」的
+ * <b>账实不符</b>。报名名单的数据源是 booking 表，余位的数据源是 booked_count，
+ * 两者必须闭合：{@code booked_count == count(booking where status in ('booked','checked_in'))}。
+ *
+ * <p><b>做法与边界</b>：
+ * <ul>
+ *   <li>排课 / 场地对齐：只在<b>本周没有任何排课 / 占用</b>时才介入，已有真实数据立刻退出；</li>
+ *   <li>名册对齐：只为 3 门基础演示课程（id 11/12/13）从<b>演示会员池</b>（member.source='demo'，
+ *       V13 建立）补齐 booking 行，不碰真实会员的任何记录；</li>
+ *   <li>闭合重算：对<b>所有</b>课程把 {@code booked_count} 重算为有效预约数——
+ *       这是防御性收口，即使将来某条路径漏记，也不会再出现"账实不符"。</li>
+ * </ul>
  */
 @Component
 public class DemoScheduleAligner {
@@ -47,7 +56,7 @@ public class DemoScheduleAligner {
         }
     }
 
-    /** 对齐本周：课程 + 场地占用 */
+    /** 对齐：课程时间 + 场地占用 + 报名名册（名册闭合每次都跑，代价是几条 SQL） */
     @Transactional
     public void align() {
         LocalDate monday = mondayOf(LocalDate.now());
@@ -56,8 +65,10 @@ public class DemoScheduleAligner {
 
         boolean coursesMoved = alignCourses(from, to, monday);
         boolean venuesAdded = alignVenueBookings(from, to, monday);
-        if (coursesMoved || venuesAdded) {
-            log.info("[demo] 演示排课已对齐本周（{} ~ {}）", monday, monday.plusDays(6));
+        int fixed = alignRoster();
+        if (coursesMoved || venuesAdded || fixed > 0) {
+            log.info("[demo] 演示数据已对齐（{} ~ {}）：补报名 {} 条",
+                    monday, monday.plusDays(6), fixed);
         }
     }
 
@@ -120,6 +131,69 @@ public class DemoScheduleAligner {
                         + "values (?,?,?,?, 'booked', ?)",
                 venueId, memberId, LocalDateTime.of(day, LocalTime.of(startHour, 0)),
                 LocalDateTime.of(day, LocalTime.of(endHour, 0)), createdBy);
+    }
+
+    /* ==================== 报名名册闭合 ==================== */
+
+    /** 参与名册对齐的基础演示课程（与种子脚本一致：C001 / C002 / C003） */
+    private static final long[] DEMO_COURSES = {11L, 12L, 13L};
+
+    /** 有效预约状态：与余位口径一致——已约 + 已签到（已取消 / 爽约不计入余位） */
+    private static final String ACTIVE_STATUS = "('booked','checked_in')";
+
+    /**
+     * 名册闭合：演示课程缺多少有效预约就从演示会员池补多少，然后全量重算 booked_count。
+     *
+     * @return 实际补建的 booking 行数
+     */
+    private int alignRoster() {
+        int created = 0;
+        for (long courseId : DEMO_COURSES) {
+            Integer cap = jdbc.queryForObject(
+                    "select capacity from course where id = ?", Integer.class, courseId);
+            Integer target = jdbc.queryForObject(
+                    "select least(booked_count, capacity) from course where id = ?",
+                    Integer.class, courseId);
+            if (cap == null || target == null || target <= 0) continue;
+
+            Integer active = jdbc.queryForObject(
+                    "select count(*) from booking where course_id = ? and status in "
+                            + ACTIVE_STATUS, Integer.class, courseId);
+            int need = target - (active == null ? 0 : active);
+            if (need <= 0) continue;
+
+            LocalDateTime start = jdbc.queryForObject(
+                    "select start_time from course where id = ?", LocalDateTime.class, courseId);
+            // 已开课的历史预约记为已签到，更贴近真实账目；未开课的记为已约
+            boolean started = start != null && start.isBefore(LocalDateTime.now());
+            String status = started ? "checked_in" : "booked";
+
+            // 演示会员池：只用 source='demo' 的档案，绝不占用真实会员
+            List<Long> pool = jdbc.queryForList(
+                    "select id from member where source = 'demo' and deleted_at is null "
+                            + "and id not in (select member_id from booking where course_id = ? "
+                            + "and status in " + ACTIVE_STATUS + ") order by id limit ?",
+                    Long.class, courseId, need);
+            for (Long memberId : pool) {
+                if (started) {
+                    created += jdbc.update(
+                            "insert into booking (member_id, course_id, status, booked_at,"
+                                    + " checkin_at, checkin_channel) values (?, ?, ?, now(), ?, 'front_desk')",
+                            memberId, courseId, status, start);
+                } else {
+                    created += jdbc.update(
+                            "insert into booking (member_id, course_id, status, booked_at) "
+                                    + "values (?, ?, ?, now())",
+                            memberId, courseId, status);
+                }
+            }
+        }
+
+        // 全量闭合收口：任何课程的余位都以有效预约数为准
+        jdbc.update("update course c set c.booked_count = "
+                + "(select count(*) from booking b where b.course_id = c.id and b.status in "
+                + ACTIVE_STATUS + ")");
+        return created;
     }
 
     /** 本周周一（周一为一周起始，与课表口径一致） */

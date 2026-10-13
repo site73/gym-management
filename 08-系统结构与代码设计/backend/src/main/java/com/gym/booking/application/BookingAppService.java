@@ -204,6 +204,10 @@ public class BookingAppService implements BookingFacade {
 
     /**
      * 某课程的报名名单：一次取齐会员档案，避免逐条查询。
+     *
+     * <p><b>口径</b>：排除「已取消」——名单语义是"现在这门课都有谁"，
+     * 这样返回条数与 {@code course.booked_count} 严格一致（取消时余位已释放）。
+     * 已取消的记录仍保留在 booking 表中供追溯，只是不进名单。
      */
     @Override
     public java.util.List<BookingDetailView> listBookingsByCourse(Long courseId) {
@@ -211,6 +215,7 @@ public class BookingAppService implements BookingFacade {
         var members = membershipFacade.listMembers().stream()
                 .collect(java.util.stream.Collectors.toMap(m -> m.id(), m -> m, (a, b) -> a));
         return bookingRepository.findByCourseIdOrderByIdAsc(courseId).stream()
+                .filter(b -> !"cancelled".equals(b.getStatus()))
                 .map(b -> {
                     var m = members.get(b.getMemberId());
                     return new BookingDetailView(b.getId(), b.getMemberId(),
